@@ -32,6 +32,9 @@ a:hover{color:var(--oh)}
 .sidebar ul li a{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;font-size:14px;color:var(--t2);transition:all .18s ease;cursor:pointer;border-left:3px solid transparent;font-family:system-ui,-apple-system,sans-serif}
 .sidebar ul li a:hover{background:rgba(212,93,62,.06);color:var(--tb);border-left-color:rgba(212,93,62,.35)}
 .sidebar ul li a.active{background:rgba(212,93,62,.1);color:var(--o);font-weight:600;border-left-color:var(--o)}
+.sidebar-group{padding:16px 22px 5px;font-size:10.5px;font-weight:600;color:var(--tm);letter-spacing:.8px;font-family:system-ui,-apple-system,sans-serif;border-top:1px solid var(--bd);margin-top:8px}
+.ch-num{color:var(--tm);font-size:11.5px;font-weight:600;font-variant-numeric:tabular-nums;min-width:18px;flex-shrink:0;transition:color .18s ease}
+.sidebar ul li a.active .ch-num{color:var(--o)}
 
 .main{margin-left:var(--sw);padding:24px 48px 120px;margin-top:var(--hh);max-width:900px;min-height:100vh}
 
@@ -174,31 +177,46 @@ document.addEventListener('DOMContentLoaded',function(){
 <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
 
 <nav class="sidebar" id="sidebar">
-  <div class="sidebar-label">📚 目录</div>
+  <div class="sidebar-label">目录</div>
   <ul>
-    <li><a onclick="go('landing')" class="active" id="nav-landing">🏠 首页</a></li>
-<li><a onclick="go('ch01')" id="nav-ch01">🚀 第01 入门指南</a></li>
-    <li><a onclick="go('ch02')" id="nav-ch02">🎲 第02 猜数字游戏</a></li>
-    <li><a onclick="go('ch03')" id="nav-ch03">📝 第03 Java 开发者视角的 Rust 核心语法</a></li>
-    <li><a onclick="go('ch04')" id="nav-ch04">🔑 第04 所有权 —— Rust 最核心的概念</a></li>
-    <li><a onclick="go('ch05')" id="nav-ch05">🏗️ 第05 结构体</a></li>
-    <li><a onclick="go('ch06')" id="nav-ch06">🔀 第06 枚举与模式匹配</a></li>
-    <li><a onclick="go('ch07')" id="nav-ch07">📦 第07 包、Crate 与模块系统</a></li>
-    <li><a onclick="go('ch08')" id="nav-ch08">📚 第08 常见集合</a></li>
-    <li><a onclick="go('ch09')" id="nav-ch09">💥 第09 错误处理</a></li>
-    <li><a onclick="go('ch10')" id="nav-ch10">🧬 第10 泛型、Trait 与生命周期</a></li>
-    <li><a onclick="go('ch11')" id="nav-ch11">🧪 第11 测试 — Java 开发者视角</a></li>
-    <li><a onclick="go('ch12')" id="nav-ch12">🔍 第12 I/O 项目（构建 grep）— Java 开发者视角</a></li>
-    <li><a onclick="go('ch13')" id="nav-ch13">⚡ 第13 闭包与迭代器——Rust 的函数式二刀流</a></li>
-    <li><a onclick="go('ch14')" id="nav-ch14">📦 第14 Cargo 与 Crates.io——Rust 的包管理王国</a></li>
-    <li><a onclick="go('ch15')" id="nav-ch15">🦀 第15 智能指针——Rust 的内存管理万花筒</a></li>
-    <li><a onclick="go('ch16')" id="nav-ch16">🧵 第16 并发编程</a></li>
-    <li><a onclick="go('ch17')" id="nav-ch17">⚡ 第17 异步编程</a></li>
-    <li><a onclick="go('ch18')" id="nav-ch18">🎨 第18 面向对象编程与 Trait 对象</a></li>
-    <li><a onclick="go('ch19')" id="nav-ch19">🎯 第19 模式匹配——Rust 的解构魔术</a></li>
-    <li><a onclick="go('ch20')" id="nav-ch20">🔬 第20 高级特性——Rust 的"里世界"</a></li>
-    <li><a onclick="go('ch21')" id="nav-ch21">🌐 第21 最终项目——手搓一个多线程 Web 服务器</a></li>
-    <li><a onclick="go('appendix')" id="nav-appendix">📖 附录：Rust 生态常用 Crate 速览——你的 Rust 工具箱</a></li>
+    <li><a onclick="go('landing')" class="active" id="nav-landing">首页</a></li>
+  </ul>
+  <div class="sidebar-group">基础入门</div>
+  <ul>
+    <li><a onclick="go('ch01')" id="nav-ch01"><span class="ch-num">01</span>入门指南</a></li>
+    <li><a onclick="go('ch02')" id="nav-ch02"><span class="ch-num">02</span>猜数字游戏</a></li>
+    <li><a onclick="go('ch03')" id="nav-ch03"><span class="ch-num">03</span>核心语法</a></li>
+    <li><a onclick="go('ch04')" id="nav-ch04"><span class="ch-num">04</span>所有权</a></li>
+  </ul>
+  <div class="sidebar-group">核心语言</div>
+  <ul>
+    <li><a onclick="go('ch05')" id="nav-ch05"><span class="ch-num">05</span>结构体</a></li>
+    <li><a onclick="go('ch06')" id="nav-ch06"><span class="ch-num">06</span>枚举与模式匹配</a></li>
+    <li><a onclick="go('ch07')" id="nav-ch07"><span class="ch-num">07</span>模块系统</a></li>
+    <li><a onclick="go('ch08')" id="nav-ch08"><span class="ch-num">08</span>常见集合</a></li>
+    <li><a onclick="go('ch09')" id="nav-ch09"><span class="ch-num">09</span>错误处理</a></li>
+    <li><a onclick="go('ch10')" id="nav-ch10"><span class="ch-num">10</span>泛型、Trait 与生命周期</a></li>
+  </ul>
+  <div class="sidebar-group">实战进阶</div>
+  <ul>
+    <li><a onclick="go('ch11')" id="nav-ch11"><span class="ch-num">11</span>测试</a></li>
+    <li><a onclick="go('ch12')" id="nav-ch12"><span class="ch-num">12</span>I/O 项目</a></li>
+    <li><a onclick="go('ch13')" id="nav-ch13"><span class="ch-num">13</span>闭包与迭代器</a></li>
+    <li><a onclick="go('ch14')" id="nav-ch14"><span class="ch-num">14</span>Cargo 深入</a></li>
+  </ul>
+  <div class="sidebar-group">高级特性</div>
+  <ul>
+    <li><a onclick="go('ch15')" id="nav-ch15"><span class="ch-num">15</span>智能指针</a></li>
+    <li><a onclick="go('ch16')" id="nav-ch16"><span class="ch-num">16</span>并发编程</a></li>
+    <li><a onclick="go('ch17')" id="nav-ch17"><span class="ch-num">17</span>异步编程</a></li>
+    <li><a onclick="go('ch18')" id="nav-ch18"><span class="ch-num">18</span>面向对象</a></li>
+    <li><a onclick="go('ch19')" id="nav-ch19"><span class="ch-num">19</span>模式匹配</a></li>
+    <li><a onclick="go('ch20')" id="nav-ch20"><span class="ch-num">20</span>高级特性</a></li>
+    <li><a onclick="go('ch21')" id="nav-ch21"><span class="ch-num">21</span>最终项目</a></li>
+  </ul>
+  <div class="sidebar-group">附录</div>
+  <ul>
+    <li><a onclick="go('appendix')" id="nav-appendix">Crate 速览</a></li>
   </ul>
 </nav>
 
