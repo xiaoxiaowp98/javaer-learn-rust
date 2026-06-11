@@ -1247,11 +1247,16 @@ Rectangle {
 <pre class="code-block" data-lang="java"><code>// Java 需要手动实现 toString()，或用 Lombok @ToString
 // Rust 的 #[derive(Debug)] 类似 Lombok 的 @ToString——加个注解，自动生成</code></pre>
 <h3><code>dbg!</code> 宏 —— 调试界的瑞士军刀</h3>
-<pre class="code-block" data-lang="rust"><code>let rect = Rectangle {
-    width: dbg!(30 * 2),  // 打印： [src/main.rs:10] 30 * 2 = 60——表达式和结果一起输出
+<p><code>dbg!</code> 的杀手锏：打印调试信息，<strong>然后把值原样返回</strong>——不耽误原来的逻辑。两种常见用法：</p>
+<pre class="code-block" data-lang="rust"><code>// 用法一：塞在表达式中间——打印 + 返回值，不断链
+let rect = Rectangle {
+    width: dbg!(30 * 2),  // 打印 "30 * 2 = 60"，然后 60 照常赋给 width
     height: 50,
 };
-dbg!(&amp;rect);              // 打印整个结构体到 stderr，带文件和行号</code></pre>
+
+// 用法二：单独一行，打印整个变量
+dbg!(&amp;rect);
+// 输出：[src/main.rs:7] &rect = Rectangle { width: 60, height: 50 }</code></pre>
 <p><strong>vs Java</strong>：Java 中通常需要 <code>System.out.println("width = " + width)</code> 手动拼接，又臭又长。<code>dbg!</code> 直接把文件名、行号、表达式和值全打印了，调试效率高出一个量级。</p>
 <hr>
 <h2>5.4 元组结构体（Tuple Structs）—— 给元组穿件衣服</h2>
@@ -1270,7 +1275,7 @@ foo(origin);  // ❌ 编译错误：类型不匹配——你拿个 Point 冒充 
 <pre class="code-block" data-lang="rust"><code>struct AlwaysEqual;   // 没有字段！就一个空壳
 
 let subject = AlwaysEqual;  // 直接初始化，没有大括号——就是个标记</code></pre>
-<p>这种结构体不存任何数据，但可以作为一个"标记类型"来实现 trait。就像在说："我不需要数据，但我代表一种类型概念"。</p>
+<p>这种结构体不存任何数据，就是个"标记"。比如你需要在代码里区分"已登录"和"未登录"两种状态，但又不需要存额外字段——拿两个空壳结构体当标记就行，后面学到的 trait 和泛型会让它真正派上用场。</p>
 <p><strong>vs Java</strong>：类似一个空的标记接口（marker interface，如 <code>Serializable</code>），但 Rust 中这是一个"值"类型，你可以实例化它。</p>
 <hr>
 <h2>5.6 ⚠️ 结构体中的引用 —— 需要生命周期，暂时别碰</h2>
