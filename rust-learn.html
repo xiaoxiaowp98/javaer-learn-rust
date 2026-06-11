@@ -1081,7 +1081,26 @@ public class User {
     long signInCount;
 }
 new User(true, &quot;someone&quot;, &quot;a@b.com&quot;, 1);</code></pre>
-<div class="table-wrap"><table><thead><tr><th>区别</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>创建实例</td><td>直接写字段值，<strong>不用 <code>new</code></strong></td><td>必须 <code>new</code>，没 <code>new</code> 编译器跟你急</td></tr><tr><td>字段顺序</td><td><strong>不要求</strong>按定义顺序——随便排</td><td>取决于构造函数，按参数顺序来</td></tr><tr><td>可变性</td><td>默认不可变，整个实例加 <code>mut</code></td><td>字段可单独设为 <code>final</code>——粒度更细</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>区别</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>创建实例</td><td>直接写字段值，<strong>不用 <code>new</code></strong></td><td>必须 <code>new</code>，没 <code>new</code> 编译器跟你急</td></tr><tr><td>字段赋值</td><td><strong>必须写字段名</strong>：<code>email: ..., username: ...</code>（顺序倒无所谓）</td><td>按构造函数参数顺序传，不用写字段名</td></tr><tr><td>可变性</td><td>默认锁死，想改字段必须 <code>let mut</code> 整个实例——一开全开</td><td>字段可单独设 <code>final</code>——粒度更细</td></tr></tbody></table></div>
+<p>上表"可变性"那行展开说说——Rust 的结构体实例一旦创建，<strong>所有字段都锁死了</strong>，你不能改任何一个：</p>
+<pre class="code-block" data-lang="rust"><code>let user1 = User {
+    active: true,
+    username: String::from("someone"),
+    email: String::from("a@b.com"),
+    sign_in_count: 1,
+};
+// user1.email = String::from("new@b.com");  // ❌ 编译错误！不让改
+// user1.sign_in_count += 1;                  // ❌ 同样不行</code></pre>
+<p>想改？在 <code>let</code> 后面加个 <code>mut</code>，相当于告诉编译器"我把整个实例的锁打开了"——然后<strong>所有字段</strong>都可以改：</p>
+<pre class="code-block" data-lang="rust"><code>let mut user1 = User {              // mut = "这玩意儿我后续要改，别锁"
+    active: true,
+    username: String::from("someone"),
+    email: String::from("a@b.com"),
+    sign_in_count: 1,
+};
+user1.email = String::from("new@b.com");  // ✅ 现在可以改了
+user1.sign_in_count += 1;                  // ✅ 这个也行</code></pre>
+<p>⚠️ <strong>关键区别</strong>：Java 可以单独给某个字段加 <code>final</code>，其余的照样改——粒度细到字段级别。Rust 不行，<code>mut</code> 是加在整个变量上的，<strong>要么全都能改，要么全都不能改</strong>，没有"只锁 email 不锁 sign_in_count"这种操作。这是 Rust 故意的设计：简单粗暴，不给你在"哪些字段能改哪些不能"上纠结的机会，减少心智负担。</p>
 <blockquote>
 <p>Rust 的结构体定义就好像只写了一个 Java class 的字段声明部分——方法全部挪到 <code>impl</code> 块去，各过各的。</p>
 </blockquote>
