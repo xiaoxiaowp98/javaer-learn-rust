@@ -1081,7 +1081,7 @@ public class User {
     long signInCount;
 }
 new User(true, &quot;someone&quot;, &quot;a@b.com&quot;, 1);</code></pre>
-<div class="table-wrap"><table><thead><tr><th>区别</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>创建实例</td><td>直接写字段值，<strong>不用 <code>new</code></strong></td><td>必须 <code>new</code>，没 <code>new</code> 编译器跟你急</td></tr><tr><td>字段赋值</td><td><strong>必须写字段名</strong>：<code>email: ..., username: ...</code>（顺序倒无所谓）</td><td>按构造函数参数顺序传，不用写字段名</td></tr><tr><td>可变性</td><td>默认锁死，想改字段必须 <code>let mut</code> 整个实例——一开全开</td><td>字段可单独设 <code>final</code>——粒度更细</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>区别</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>创建实例</td><td>直接写字段值，<strong>不用 <code>new</code></strong></td><td>必须 <code>new</code>，没 <code>new</code> 编译器跟你急</td></tr><tr><td>字段赋值</td><td>用字段名赋值：<code>email: ..., username: ...</code>（名字一样可简写，顺序倒无所谓）</td><td>按构造函数参数顺序传，不用写字段名</td></tr><tr><td>可变性</td><td>默认锁死，想改字段必须 <code>let mut</code> 整个实例——一开全开</td><td>字段可单独设 <code>final</code>——粒度更细</td></tr></tbody></table></div>
 <p>上表"可变性"那行展开说说——Rust 的结构体实例一旦创建，<strong>所有字段都锁死了</strong>，你不能改任何一个：</p>
 <pre class="code-block" data-lang="rust"><code>let user1 = User {
     active: true,
@@ -1105,15 +1105,16 @@ user1.sign_in_count += 1;                  // ✅ 这个也行</code></pre>
 <p>Rust 的结构体定义就好像只写了一个 Java class 的字段声明部分——方法全部挪到 <code>impl</code> 块去，各过各的。</p>
 </blockquote>
 <h3>字段初始化简写 —— 变量名就是字段名？懒人福音</h3>
+<p>前面说了赋值"必须写字段名"，但有一种情况可以偷懒——当变量名跟字段名一模一样时，冒号和变量名都可以省掉：</p>
 <pre class="code-block" data-lang="rust"><code>fn build_user(email: String, username: String) -&gt; User {
     User {
-        email,          // 等价于 email: email——不用写两遍了
+        email,          // 等价于 email: email——变量名就是字段名，写一遍够了
         username,       // 等价于 username: username
-        active: true,
+        active: true,   // 变量名对不上，老老实实写字段名: 值
         sign_in_count: 1,
     }
 }</code></pre>
-<p>当变量名和结构体字段名完全一样时，Rust 允许你偷懒只写一个。Java 没有这个语法（Java 16+ 的 Record 有类似的简洁构造，但思路不同）。</p>
+<p>注意，这<strong>不是</strong>省略了字段名——<code>email</code> 这个词本身就是字段名，只不过它碰巧也是变量名，所以不用写两遍。本质上还是"必须写字段名"，只是省了重复的那个。Java 没有这个语法（Java 16+ 的 Record 有类似的简洁构造，但思路不同）。</p>
 <h3>结构体更新语法 —— 像 Java 的 copy + spread，但有坑</h3>
 <pre class="code-block" data-lang="rust"><code>let user2 = User {
     email: String::from(&quot;new@example.com&quot;),
@@ -1219,7 +1220,7 @@ Rectangle sq = Rectangle.square(10);</code></pre>
 impl Rectangle {
     fn can_hold(&amp;self, other: &amp;Rectangle) -&gt; bool { ... }
 }</code></pre>
-<p>这是合法的，不会报错。Java 不允许一个类定义被拆到多个块中（C# 有 <code>partial class</code> 支持这个，Java 没有）。Rust 的这个灵活性在组织大型模块时很有用——你可以把不同 trait 的实现放在不同的 <code>impl</code> 块里，逻辑清晰。</p>
+<p>这是合法的，不会报错。Java 不允许一个类定义被拆到多个块中（C# 有 <code>partial class</code> 支持这个，Java 没有）。Rust 的这个灵活性在代码多的时候很有用——比如把"计算相关"的方法放一个 <code>impl</code>，把"显示相关"的方法放另一个 <code>impl</code>，逻辑清晰，不用挤在一个大块里。</p>
 <hr>
 <h2>5.3 <code>#[derive(Debug)]</code> 与 <code>dbg!</code> 宏 —— 调试利器</h2>
 <h3><code>#[derive(Debug)]</code> —— 一行注解，告别手写 toString</h3>
