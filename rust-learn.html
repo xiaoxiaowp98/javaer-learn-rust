@@ -1700,102 +1700,156 @@ pub use validation::*;</code></pre>
 <p>上面的 <code>date-parser</code> 例子：1（库）+ 3（main + bench + import）= <strong>4 个 crate</strong>。</p>
 <p>⚠️ <strong>铁律</strong>：一个包最多 <strong>1 个库 crate</strong>（只能有一个 <code>lib.rs</code>），但<strong>二进制 crate 随便加</strong>。</p>
 <p>💡 <strong>还有更狠的</strong>：项目大到"一个包装不下"怎么办？Rust 有 <strong>workspace</strong>——一个根目录下挂多个包，每个包各有各的 <code>Cargo.toml</code> 和 <code>src/</code>，但共享一个 <code>Cargo.lock</code>，<code>cargo build</code> 一次全编译。这个后面第 14 章再细讲，先知道有这么个东西就行。</p>
-<h3>模块树</h3>
-<p>Rust 的模块就是一棵树，根是 <code>crate</code>，往下分叉：</p>
-<pre class="code-block" data-lang=""><code>crate
- └── front_of_house          ← 模块
-     ├── hosting             ← 子模块
-     │   ├── add_to_waitlist ← 函数
-     │   └── seat_at_table
-     └── serving             ← 另一个子模块
-         ├── take_order
-         ├── serve_order
-         └── take_payment</code></pre>
-<p>这就跟文件系统的目录树一样，只不过是用代码搭出来的。</p>
+<h3>模块树 —— 磁盘上长什么样</h3>
+<p>Rust 的模块就是一棵树，根是 <code>crate</code>（入口文件），往下分叉。每个模块对应磁盘上的一个文件或文件夹，里面的函数、结构体就是树的叶子。</p>
+<p>先看一个关键点：<strong>模块可以是文件（.rs），也可以是文件夹</strong>。如果一个模块下面还有子模块，它就必须是文件夹；如果它是叶子（没有子模块了），一个 .rs 文件就搞定。</p>
+<p>来看一个餐厅项目的完整结构：</p>
+<pre class="code-block" data-lang="">restaurant/
+├── Cargo.toml
+└── src/
+    ├── lib.rs                          ← crate 根，写 mod front_of_house;
+    ├── front_of_house/                 ← front_of_house 模块（文件夹，因为它有子模块）
+    │   ├── mod.rs                      ← 这个模块的入口，写 mod hosting; mod serving;
+    │   ├── hosting.rs                  ← hosting 子模块（.rs 文件，它是叶子）
+    │   └── serving/                    ← serving 子模块（文件夹！它也有子模块）
+    │       ├── mod.rs                  ← 入口，写 mod kitchen;
+    │       └── kitchen.rs              ← kitchen 子模块（叶子）</code></pre>
+<p>看到没？<code>hosting</code> 和 <code>kitchen</code> 是 .rs 文件（叶子，没有子模块了），而 <code>front_of_house</code> 和 <code>serving</code> 是文件夹（下面还有子模块）。<strong>有孩子 → 文件夹；没孩子 → .rs 文件</strong>，就这么简单。</p>
+<p>你在 <code>lib.rs</code> 用 <code>mod</code> 声明第一层，在 <code>mod.rs</code> 里用 <code>mod</code> 声明下一层，一层层往下——编译器就靠这个搭出完整的模块树。</p>
 <hr>
-<h2>7.2 定义模块</h2>
-<p>Rust 里定义模块，你得<strong>主动喊一声 <code>mod</code></strong>。不像 Java 那样写个 <code>package xxx;</code> 就自动跟目录挂钩——Rust 要的是你"先声明，编译器再去找"。</p>
-<pre class="code-block" data-lang="rust"><code>mod front_of_house {          // 内联定义——直接把模块写在这里
+<h2>7.2 定义模块：<code>mod</code> 关键字</h2>
+<p>上一节看了模块在磁盘上长什么样，现在来看看<strong>怎么用代码把这些模块声明出来</strong>。</p>
+<p>核心就一个关键字：<code>mod</code>。你告诉编译器"我有个模块叫 xxx"，编译器就去对应位置找代码。</p>
+
+<h3>标准写法：mod 声明 + 对应文件</h3>
+<p>最常见的写法——在入口文件里写一行 <code>mod 模块名;</code> 声明，编译器自动去找对应的 .rs 文件：</p>
+<pre class="code-block" data-lang="rust"><code>// src/lib.rs —— 入口文件
+mod front_of_house;     // 声明一个模块，编译器会去找对应的文件</code></pre>
+<p>这行代码的意思是："我有一个模块叫 <code>front_of_house</code>，代码不在这里，去外面找。"</p>
+<p>编译器去哪找？两个位置（找到哪个算哪个）：</p>
+<pre class="code-block" data-lang="">src/
+├── lib.rs
+├── front_of_house.rs           ← 方式 1：同名 .rs 文件（现代推荐）
+└── front_of_house/
+    └── mod.rs                   ← 方式 2：同名文件夹下的 mod.rs（老项目常见）</code></pre>
+<p>两种都行，别混着用就行（同一个模块不能两个都放，编译器会骂你）。</p>
+<p>子模块也是一样的套路。假设 <code>front_of_house</code> 下面还有个 <code>hosting</code>：</p>
+<pre class="code-block" data-lang="rust"><code>// src/front_of_house.rs（或 src/front_of_house/mod.rs）
+mod hosting;         // 告诉编译器："hosting 是我的子模块，去下面找"</code></pre>
+<pre class="code-block" data-lang="">src/
+├── lib.rs
+├── front_of_house.rs            ← 里面写 mod hosting;
+└── front_of_house/
+    ├── hosting.rs               ← 编译器自动找到这里
+    └── serving.rs</code></pre>
+<p>规律：<code>mod xxx;</code> 写在哪个文件里，编译器就去<strong>那个文件对应的目录</strong>下找 <code>xxx.rs</code> 或 <code>xxx/mod.rs</code>。层层递进。</p>
+
+<h3>内联写法：代码少的时候偷个懒</h3>
+<p>如果模块特别小（就两三行代码），懒得单独建文件，可以直接把代码写在 <code>mod</code> 后面的大括号里：</p>
+<pre class="code-block" data-lang="rust"><code>// src/lib.rs
+mod front_of_house {          // 内联定义——直接把模块内容写在这
     mod hosting {
         fn add_to_waitlist() {}
     }
 }</code></pre>
-<p><strong>vs Java</strong>：</p>
-<pre class="code-block" data-lang="java"><code>// Java：包是隐式的，由目录结构决定
-package front_of_house.hosting;
-// 文件必须在 front_of_house/hosting/ 目录下</code></pre>
-<pre class="code-block" data-lang="rust"><code>// Rust：显式用 mod 声明
-// 可以内联，也可以放在单独文件中</code></pre>
-<p>说白了，Java 是"包由目录定了"，Rust 是"你先说有哪些模块，编译器再去对应目录里找"。这意味着你可以有一大堆 <code>.rs</code> 文件躺在目录里，但如果你忘了写 <code>mod xx;</code>，编译器就当它们不存在——这其实是个好事，因为导入关系一目了然。</p>
-<h3>文件组织方式</h3>
-<pre class="code-block" data-lang="rust"><code>// src/lib.rs
-mod front_of_house;  // 告诉编译器：&quot;去外面找这个模块&quot;</code></pre>
-<p>编译器听到 <code>mod front_of_house;</code> 后，会按以下顺序去翻找：</p>
-<pre class="code-block" data-lang=""><code>src/
-├── lib.rs
-├── front_of_house.rs           // 方式 1：同名文件（现代推荐）
-└── front_of_house/
-    └── hosting.rs               // 子模块放在同名目录下</code></pre>
-<p><strong>或者兼容旧风格</strong>（老一辈 Rust 项目常见的套路）：</p>
-<pre class="code-block" data-lang=""><code>src/
-├── lib.rs
-└── front_of_house/
-    ├── mod.rs                   // 旧方式：用 mod.rs 当模块入口
-    └── hosting.rs</code></pre>
-<blockquote>
-<p>💡 <strong>区别 Java</strong>：Java 的包结构通常强制对应目录结构；Rust 必须先用 <code>mod</code> 显式声明模块，编译器再按固定文件规则寻找 <code>front_of_house.rs</code> 或 <code>front_of_house/mod.rs</code> 等位置。也就是说，Rust 不是"目录存在即模块存在"。你得先打声招呼，编译器才认。</p>
-</blockquote>
-<hr>
-<h2>7.3 路径：绝对路径 vs 相对路径</h2>
-<p>有了模块树，怎么找到里面的东西？用路径，跟文件系统的路径差不多意思。</p>
-<pre class="code-block" data-lang="rust"><code>mod front_of_house {
-    pub mod hosting {
-        pub fn add_to_waitlist() {}
-    }
-}
+<p>这种写法适合模块很小、不想单独建文件的场景。模块一大就得拆出去，不然入口文件会膨胀成意大利面条。</p>
+<p>官方书的教学顺序是先教内联（方便演示概念），再教拆文件。但实际开发中，<strong>拆文件才是常态，内联只是临时方案</strong>。</p>
 
+<h3>和 Java 的本质区别</h3>
+<p>Java 是"目录存在即包存在"——你在 <code>front_of_house/hosting/</code> 目录下建个文件，<code>package front_of_house.hosting;</code> 一写，包就有了。</p>
+<p>Rust 是"你先打招呼，编译器才认"——<code>.rs</code> 文件躺在目录里，但你没写 <code>mod xxx;</code>，编译器就当它不存在。这其实是个好事：哪些模块被引入了，看一眼入口文件的 <code>mod</code> 声明就一清二楚，不用满目录翻。</p>
+<hr>
+<h2>7.3 路径：找到模块里的东西</h2>
+<p>模块树搭好了，里面的函数、结构体怎么找到？用<strong>路径</strong>，跟文件系统路径一个道理——从哪出发、经过哪些目录、找到哪个文件。</p>
+<p>还是用餐厅项目举例，目录结构：</p>
+<pre class="code-block" data-lang="">restaurant/
+└── src/
+    ├── lib.rs              ← 入口，定义了 eat_at_restaurant()
+    ├── front_of_house/
+    │   ├── mod.rs          ← 声明了 hosting 和 serving
+    │   ├── hosting.rs      ← 定义了 add_to_waitlist()
+    │   └── serving.rs      ← 定义了 take_order()</code></pre>
+<p>假设你想在 <code>lib.rs</code> 里调用 <code>add_to_waitlist()</code>，有两种写法：</p>
+<pre class="code-block" data-lang="rust"><code>// src/lib.rs
 pub fn eat_at_restaurant() {
-    // 绝对路径：从 crate 根开始，就像 &quot;/usr/local/bin&quot;
+    // 绝对路径：从 crate 根开始，一撸到底——类似 "/usr/local/bin"
     crate::front_of_house::hosting::add_to_waitlist();
 
-    // 相对路径：从当前模块开始，就像 &quot;./foo/bar&quot;
+    // 相对路径：从当前模块开始——类似 "./foo/bar"
     front_of_house::hosting::add_to_waitlist();
-
-    // super：从父模块开始（类似文件系统的 ..）
-    super::some_function();
 }</code></pre>
-<div class="table-wrap"><table><thead><tr><th>路径类型</th><th>开头</th><th>类似 Java</th></tr></thead><tbody><tr><td><strong>绝对</strong></td><td><code>crate::</code> 或 crate 名</td><td>全限定名</td></tr><tr><td><strong>相对</strong></td><td><code>self::</code>、<code>super::</code>、模块名</td><td>相对导入</td></tr></tbody></table></div>
-<p>⚠️ <strong>路径分隔符</strong>：Java 用 <code>.</code>，Rust 用 <code>::</code>——这是你写 Rust 时第一周会疯狂打错的东西，习惯就好。</p>
+<p>两种都能用，区别就是出发地不同：</p>
+<div class="table-wrap"><table><thead><tr><th>路径类型</th><th>写法</th><th>好比</th></tr></thead><tbody>
+<tr><td><strong>绝对路径</strong></td><td><code>crate::模块::子模块::函数</code></td><td>从根目录开始的完整路径</td></tr>
+<tr><td><strong>相对路径</strong></td><td><code>模块::子模块::函数</code></td><td>从当前位置出发的路径</td></tr>
+<tr><td><strong>super</strong></td><td><code>super::xxx</code></td><td>上一级（类似文件系统的 <code>..</code>）</td></tr>
+</tbody></table></div>
+<p>⚠️ <strong>路径分隔符</strong>：Java 用 <code>.</code>（<code>com.example.Foo</code>），Rust 用 <code>::</code>（<code>crate::front_of_house::hosting</code>）——刚上手你会疯狂打错，习惯就好。</p>
 <hr>
 <h2>7.4 ⭐ <code>pub</code> 关键字 —— 可见性控制</h2>
-<p>Rust 的哲学是"你不说公开，我就当你是私事"。这和 Java 那个友好的 package-private 默认可见性完全不是一个路数。</p>
+<p>Rust 的哲学是"你不说公开，我就当你是私事"。所有东西默认私有，想公开得一个一个加 <code>pub</code>。</p>
+
 <h3>默认都是私有的</h3>
-<pre class="code-block" data-lang="rust"><code>mod front_of_house {
-    mod hosting {           // 默认私有——外部看都看不见
-        fn add_to_waitlist() {}  // 也默认私有
-    }
+<p>继续用餐厅项目。假设 <code>hosting.rs</code> 里定义了一个函数，但没加 <code>pub</code>：</p>
+<pre class="code-block" data-lang="rust"><code>// src/front_of_house/hosting.rs
+fn add_to_waitlist() {}    // 没加 pub → 私有，外面看不见</code></pre>
+<pre class="code-block" data-lang="rust"><code>// src/lib.rs
+mod front_of_house;
+
+pub fn eat_at_restaurant() {
+    // ❌ 编译错误：add_to_waitlist 是私有的
+    crate::front_of_house::hosting::add_to_waitlist();
+}</code></pre>
+<p>不光函数如此——模块本身也是私有的。如果 <code>front_of_house</code> 或 <code>hosting</code> 没加 <code>pub</code>，外部连这个模块都看不到，更别说里面的东西了。Java 里不写修饰符是 package-private（同包可见），Rust 里不写 <code>pub</code> 就是"这个模块之外，天王老子也看不见"。</p>
+
+<h3><code>pub</code> 要一层一层开</h3>
+<p>想让外面用到 <code>add_to_waitlist()</code>？得从外到内逐级加 <code>pub</code>，少一层都进不去：</p>
+<pre class="code-block" data-lang="rust"><code>// src/lib.rs
+pub mod front_of_house;    // 第 1 层：模块公开，不写 pub 外面连模块都看不到</code></pre>
+<pre class="code-block" data-lang="rust"><code>// src/front_of_house/mod.rs（或 front_of_house.rs）
+pub mod hosting;    // 第 2 层：子模块公开</code></pre>
+<pre class="code-block" data-lang="rust"><code>// src/front_of_house/hosting.rs
+pub fn add_to_waitlist() {}   // 第 3 层：函数公开</code></pre>
+<p>像开锁一样，一扇门不开就进不去。</p>
+
+<h3>等等，"私有"到底是谁看不见？</h3>
+<p>前面的例子可能给你一种错觉："不加 <code>pub</code> 就谁也碰不了"。其实不是——<strong>私有项在同模块和子模块里随便用，只是父模块和兄弟模块看不到</strong>。</p>
+<p>记住一个方向：<strong>往下开放，往上封闭</strong>。</p>
+<pre class="code-block" data-lang="rust"><code>// src/front_of_house/hosting.rs
+fn helper() {}       // 私有函数，没加 pub
+
+pub fn add_to_waitlist() {
+    helper();        // ✅ 同模块，随便调
 }
 
-// ❌ 编译错误：hosting 模块是私有的，不给看
-crate::front_of_house::hosting::add_to_waitlist();</code></pre>
-<p>Java 里如果不写访问修饰符，那就是 package-private——同包都能看见。Rust 里不写 <code>pub</code>，那就是"这个模块之外，天王老子也看不见"。这迫使你一开始就想清楚"哪些是 API，哪些是内部实现"。</p>
-<h3><code>pub</code> 的粒度（比 Java 更细）</h3>
-<pre class="code-block" data-lang="rust"><code>pub mod front_of_house {         // 模块公开
-    pub mod hosting {            // 子模块公开
-        pub fn add_to_waitlist() {}  // 函数公开
-    }
-}
+// 假设 hosting 下面还有子模块 kitchen.rs：
+// fn cook() {
+//     helper();    // ✅ 子模块也能调——往下开放
+// }</code></pre>
+<pre class="code-block" data-lang="rust"><code>// src/front_of_house/serving.rs（兄弟模块）
+fn take_order() {
+    helper();        // ❌ 编译错误：兄弟模块看不到
+}</code></pre>
+<pre class="code-block" data-lang="rust"><code>// src/front_of_house/mod.rs（父模块）
+fn manage() {
+    helper();        // ❌ 编译错误：父模块也看不到
+}</code></pre>
+<p>所以 <code>pub</code> 解决的是"让更远的人能用"的问题。如果只是模块内部或子模块用，不加 <code>pub</code> 就够了，别啥都往上加。</p>
+
+<h3><code>pub</code> 的粒度——比 Java 更精细</h3>
+<p><code>pub</code> 不光能加在模块和函数上，结构体的字段、枚举的变体都能单独控制：</p>
+<pre class="code-block" data-lang="rust"><code>// src/front_of_house/hosting.rs —— 结构体定义在这里
 
 pub struct Breakfast {
-    pub toast: String,           // 字段公开
-    seasonal_fruit: String,      // 字段私有——不想让人碰
+    pub toast: String,           // 公开字段：外面随便读写
+    seasonal_fruit: String,      // 私有字段：只有本模块（及子模块）能碰
 }
 
 impl Breakfast {
     pub fn summer(toast: &amp;str) -&gt; Breakfast {  // 构造函数公开
         Breakfast {
             toast: String::from(toast),
-            seasonal_fruit: String::from(&quot;peaches&quot;),  // 我们自己选好水果
+            seasonal_fruit: String::from("peaches"),  // 同模块，私有字段随便用
         }
     }
 }
@@ -1804,22 +1858,21 @@ pub enum Appetizer {             // 枚举公开
     Soup,                        // 枚举变体自动公开——这是规矩
     Salad,
 }</code></pre>
+<p>私有字段的效果取决于<strong>你在哪</strong>：</p>
+<pre class="code-block" data-lang="rust"><code>// ===== 同模块（hosting.rs 内部）—— 私有字段随便用 =====
+let b = Breakfast { toast: String::from("sourdough"), seasonal_fruit: String::from("apple") };
+println!("{}", b.seasonal_fruit);   // ✅ 同模块，没限制
+
+// ===== 模块外面（比如 lib.rs 或其他文件）—— 私有字段直接消失 =====
+let b = Breakfast::summer("sourdough");   // ✅ 走 pub 构造函数创建
+println!("{}", b.toast);                   // ✅ pub 字段，随便读
+println!("{}", b.seasonal_fruit);          // ❌ 编译错误：私有字段，碰不到
+let b2 = Breakfast { toast: String::from("wheat"), seasonal_fruit: String::from("pear") };
+                                            // ❌ 编译错误：私有字段在结构体字面量里连写都不能写</code></pre>
+<p>看到没？私有字段不只是"读不了"——在模块外面，它直接从你的世界里消失了，创建实例的时候都不能填。所以外部代码<strong>只能走你提供的 <code>pub</code> 构造函数</strong>来创建，你想让 `seasonal_fruit` 填什么值，只有你自己说了算。</p>
 <p><strong>对比 Java</strong>：</p>
 <div class="table-wrap"><table><thead><tr><th>可见性</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>公开</td><td><code>pub</code></td><td><code>public</code></td></tr><tr><td>私有</td><td>什么都不写（默认）</td><td><code>private</code></td></tr><tr><td>默认可见性</td><td>= 私有</td><td>= <code>package-private</code>（不写修饰符）</td></tr><tr><td>Crate 内可见</td><td><code>pub(crate)</code></td><td>最接近 <code>package-private</code></td></tr><tr><td>父模块可见</td><td><code>pub(super)</code></td><td>❌</td></tr><tr><td>指定路径可见</td><td><code>pub(in path)</code></td><td>❌</td></tr><tr><td>受保护</td><td>❌（没有继承，不需要）</td><td><code>protected</code></td></tr><tr><td>字段粒度</td><td>✅ 每个字段独立控制</td><td>✅ 每个字段独立控制</td></tr><tr><td>枚举变体</td><td><strong>pub 枚举则变体全公开</strong></td><td>枚举常量固定</td></tr></tbody></table></div>
 <p>Rust 的可见性控制比 Java 精细得多。<code>pub(crate)</code> 就是"整个项目内部随便用，但外部库用不了"，<code>pub(super)</code> 就是"只有父模块能用"。Java 的 <code>protected</code> 在 Rust 里没有直接对应物——因为 Rust 没有继承体系，自然不需要"子类可见"这个级别。需要受限访问时用 <code>pub(super)</code> 或 <code>pub(crate)</code>；需要多态行为时用 trait（但这属于行为抽象，不是访问控制）。</p>
-<p><strong>🔑 关键差异</strong>：</p>
-<pre class="code-block" data-lang="rust"><code>// Rust：结构体可以有私有字段
-pub struct Breakfast {
-    pub toast: String,          // 公开：随便改
-    seasonal_fruit: String,     // 私有！外部摸都摸不到
-}
-// 结果：外部如果没有构造器，根本造不出 Breakfast 实例</code></pre>
-<pre class="code-block" data-lang="java"><code>// Java：字段访问控制相似
-public class Breakfast {
-    public String toast;
-    private String seasonalFruit;  // 私有
-}</code></pre>
-<p>这事其实很重要：Rust 让你能把结构体标记为 <code>pub</code>，但某些字段保持私有。这样你就可以控制"别人怎么创建这个值"——比如必须走你提供的构造函数，而不能直接 <code>Breakfast { toast: "xxx", seasonal_fruit: "yyy" }</code>。Java 当然也能做到，但 Rust 把这事从语法层面卡死了——私有字段在外部连结构体字面量里都不能出现。</p>
 <hr>
 <h2>7.5 <code>use</code> 关键字 —— 引入路径到作用域</h2>
 <p><code>use</code> 就是 Rust 版的 <code>import</code>：让你不用每次都写全路径，给长路劲取个"缩写"。</p>
@@ -1850,21 +1903,21 @@ let map: HashMap&lt;i32, i32&gt; = ...; // ✅ 一眼就知道 HashMap 的全路
 <pre class="code-block" data-lang="rust"><code>// 如果两个同名类型冲突，用 as 取别名
 use std::fmt::Result;
 use std::io::Result as IoResult;  // 各自安好，谁也不碍谁</code></pre>
-<h3><code>pub use</code> —— 重导出（Re-export）</h3>
-<p>这是个 Java 没有的狠活：你内部的模块结构可以跟对外暴露的 API 完全不一样。</p>
-<pre class="code-block" data-lang="rust"><code>// 内部模块结构是 front_of_house::hosting::add_to_waitlist
-// 但想对外暴露为 hosting::add_to_waitlist
-pub use crate::front_of_house::hosting;
-
-// 现在外部代码可以直接用：
-// restaurant::hosting::add_to_waitlist()
-// 而无需知道 front_of_house 的存在</code></pre>
-<p><strong>vs Java</strong>：</p>
-<pre class="code-block" data-lang="java"><code>// Java 没有直接等价物
-// 可以用 public class 包装，但机制不同</code></pre>
-<blockquote>
-<p>💡 <code>pub use</code> 让你<strong>重新组织对外 API</strong>，内部结构可以随意调整，外部调用不受影响。你今天把 <code>front_of_house</code> 改叫 <code>dining_area</code>，只要对外重导出不变，调用方一行代码不用改。这在 Java 里需要额外写门面类，麻烦得多。</p>
-</blockquote>
+<h3><code>pub use</code> —— 给外部用户开个捷径</h3>
+<p>你的餐厅库内部结构是这样的：</p>
+<pre class="code-block" data-lang="">restaurant::front_of_house::hosting::add_to_waitlist()
+            ↑ 外部用户得写这么长一串才能找到这个函数</code></pre>
+<p>外部用户想用你的库，得这么写：</p>
+<pre class="code-block" data-lang="rust"><code>// 别人的项目，引了你的 restaurant 库
+use restaurant::front_of_house::hosting::add_to_waitlist;  // 好长……</code></pre>
+<p>你觉得这个路径太深了，想让别人用起来更方便。于是在 <code>lib.rs</code> 里加一行：</p>
+<pre class="code-block" data-lang="rust"><code>// src/lib.rs —— 你写的库的入口
+pub use crate::front_of_house::hosting;   // 把 hosting "搬"到门口</code></pre>
+<p>就这一行，外部用户的写法变了：</p>
+<pre class="code-block" data-lang="rust"><code>// 别人的项目——现在短多了
+use restaurant::hosting::add_to_waitlist;  // 不用再写 front_of_house 了！</code></pre>
+<p>这就是 <code>pub use</code> 干的事：<strong>把藏得深的东西"搬"到离门口更近的地方</strong>，让别人用起来更方便。内部结构完全没变，只是对外多了一条捷径。</p>
+<p>更大的好处是：<strong>你以后改内部结构，别人的代码不用跟着改</strong>。比如你把 <code>front_of_house</code> 改名叫 <code>dining_area</code>，只要 <code>pub use</code> 那行更新一下，外部用户照样 <code>restaurant::hosting::add_to_waitlist()</code>，一行不用动。</p>
 <h3>嵌套路径</h3>
 <pre class="code-block" data-lang="rust"><code>// 不用这样——重复劳动
 use std::cmp::Ordering;
@@ -1874,7 +1927,10 @@ use std::io;
 use std::{cmp::Ordering, io};
 
 // 包含自身
-use std::io::{self, Write};  // 引入 io 本身和 io::Write</code></pre>
+use std::io::{self, Write};  // 拆开看就是两条：
+                             // use std::io;       → io 模块引入，之后能写 io::BufReader 等
+                             // use std::io::Write; → Write trait 引入，之后能直接写 Write
+                             // 所以之后 io::Write 和 Write 都能用，指向同一个东西</code></pre>
 <h3>Glob 运算符</h3>
 <pre class="code-block" data-lang="rust"><code>use std::collections::*;  // 引入所有公开项——&quot;全都要&quot;</code></pre>
 <p>⚠️ 类似 Java 的 <code>import java.util.*</code>，但社区普遍认为 glob 只适合少数场景（比如测试里快速导入全部东西，或者 prelude 模式），生产代码谨慎使用——不然读者不知道哪个名字从哪来的。</p>
@@ -1883,11 +1939,17 @@ use std::io::{self, Write};  // 引入 io 本身和 io::Write</code></pre>
 <div class="table-wrap"><table><thead><tr><th>概念</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>导入路径</td><td><code>use crate::mod::fn;</code></td><td><code>import package.Class;</code></td></tr><tr><td>路径分隔符</td><td><code>::</code></td><td><code>.</code></td></tr><tr><td>公开</td><td><code>pub</code></td><td><code>public</code></td></tr><tr><td>默认可见性</td><td><strong>私有</strong></td><td>包级可见（package-private）</td></tr><tr><td><code>pub</code> 细分</td><td><code>pub(crate)</code> / <code>pub(super)</code> / <code>pub(in path)</code></td><td>无细分</td></tr><tr><td>模块声明</td><td><code>mod xxx { }</code> 或 <code>mod xxx;</code></td><td><code>package xxx.yyy;</code></td></tr><tr><td>文件匹配</td><td><code>mod</code> 声明后按固定规则查找同名文件/目录</td><td>强制：包名通常对应目录路径</td></tr><tr><td>重导出</td><td><code>pub use</code></td><td>❌</td></tr><tr><td>别名</td><td><code>use A as B</code></td><td><code>import A as B</code>（不支持）</td></tr><tr><td>嵌套导入</td><td><code>use {A, B}</code></td><td>Java 不支持</td></tr><tr><td>外部依赖</td><td><code>Cargo.toml</code> + <code>use</code></td><td>Maven/Gradle + <code>import</code></td></tr></tbody></table></div>
 <hr>
 <h2>🚀 第七章关键点</h2>
+<p><strong>一句话总结：对外看 <code>lib.rs</code>，对内靠 <code>mod</code> + <code>pub</code>。</strong></p>
+<ul>
+<li><code>lib.rs</code> 是唯一的门面，外部用户只能看到 <code>lib.rs</code> 里通过 <code>pub</code> 暴露出来的东西</li>
+<li><code>mod</code>（<code>mod.rs</code> 或同名 <code>.rs</code> 文件）负责声明模块结构——告诉编译器模块树长什么样</li>
+<li><code>pub</code> 负责控制谁能看到谁——同模块和子模块默认能用，往外要逐级加 <code>pub</code></li>
+</ul>
 <ol>
 <li><strong><code>crate</code></strong> 是最小编译单元，<strong>包</strong> 是发布单元——不要把这两个混为一谈</li>
 <li>模块用 <code>mod</code> 显式声明，不是由目录结构隐式决定——少了这声招呼，编译器就当文件不存在</li>
-<li>所有项<strong>默认私有</strong>，<code>pub</code> 逐级开放（模块→函数/字段）——像一扇一扇开门，少开一扇就进不去</li>
-<li><code>use</code> ≈ Java 的 <code>import</code>，但 <code>pub use</code> 可以重导出——让你内部随便折腾，对外 API 纹丝不动</li>
+<li>所有项<strong>默认私有</strong>（同模块和子模块可用，往上封闭），<code>pub</code> 逐级开放——像一扇一扇开门，少开一扇就进不去</li>
+<li><code>use</code> ≈ Java 的 <code>import</code>，但 <code>pub use</code> 可以开捷径——把藏得深的东西搬到门口，别人用起来更方便</li>
 <li><code>crate::</code> = 绝对路径开头，<code>super::</code> = 父模块，<code>self::</code> = 当前——像文件系统的 <code>/</code>、<code>..</code>、<code>.</code></li>
 <li><strong>二进制和库可以共存于同一包</strong>：<code>src/main.rs</code> + <code>src/lib.rs</code>——一个项目既能当库发布，又能直接跑</li>
 </ol><hr>
