@@ -1376,11 +1376,27 @@ String s = null;  // ❌ 不允许</code></pre>
     None,          // 没有值——明确说&quot;空&quot;
     Some(T),       // 有值，类型为 T——明确说&quot;有&quot;
 }</code></pre>
-<p><code>Option&lt;T&gt;</code> 太常用了，它默认就在<strong>预导入模块（Prelude）</strong>中，不需要 <code>use</code> 导入。<code>Some</code> 和 <code>None</code> 也不需要加 <code>Option::</code> 前缀——直接用。</p>
+<p><code>Option&lt;T&gt;</code> 太常用了，Rust 自动帮你导入了，不需要 <code>use</code>。<code>Some</code> 和 <code>None</code> 也不用加 <code>Option::</code> 前缀——直接写就行，跟用 <code>true</code>/<code>false</code> 一样自然。</p>
 <h3>用法 —— 包装和解包</h3>
+<p><strong>包装</strong>——把值塞进 <code>Option</code>：</p>
 <pre class="code-block" data-lang="rust"><code>let some_number = Some(5);        // Option&lt;i32&gt;——编译器自动推断
 let some_char = Some('e');        // Option&lt;char&gt;
 let absent: Option&lt;i32&gt; = None;   // 必须标注类型——否则编译器不知道 T 是什么</code></pre>
+<p><strong>解包</strong>——把值从 <code>Option</code> 里取出来。因为可能是 <code>None</code>，所以必须处理"没有值"的情况：</p>
+<pre class="code-block" data-lang="rust"><code>// 方式一：match 匹配——最严谨，Some 和 None 都得处理
+let maybe = Some(42);
+match maybe {
+    Some(v) => println!("有值：{}", v),  // v 就是拆出来的 42
+    None => println!("空的"),
+}
+
+// 方式二：if let——只关心 Some，None 随它去
+if let Some(v) = maybe {
+    println!("有值：{}", v);
+}
+
+// 方式三：unwrap()——粗暴拆包，None 就崩溃（调试用可以，生产代码别碰）
+let v = maybe.unwrap();  // 如果 maybe 是 None，这里直接 panic！</code></pre>
 <h3>⭐ <code>Option&lt;T&gt;</code> 和 <code>T</code> 是截然不同的类型 —— 这才是整件事的精髓</h3>
 <pre class="code-block" data-lang="rust"><code>let x: i8 = 5;
 let y: Option&lt;i8&gt; = Some(5);
@@ -1484,19 +1500,53 @@ if let Some(max) = config_max {
     println!(&quot;{max}&quot;);
 }</code></pre>
 <p><strong><code>if let</code> 是 <code>match</code> 的语法糖</strong>，适用于只关心一个模式、忽略其他的场景。就像你去餐厅："如果今天有红烧肉就来一份，没有就算了"——用不着把菜单全列一遍。</p>
-<h3><code>let...else</code> —— 不满足条件就提前离场</h3>
+<h2>6.5 <code>let...else</code> —— 不满足条件就提前离场</h2>
 <blockquote>
 <p>Rust 1.65+ 引入的语法，用于"模式不匹配就提前返回/panic"的场景</p>
 </blockquote>
-<pre class="code-block" data-lang="rust"><code>// 模式匹配失败则提前返回——像门卫检查证件，不合格的直接请出去
-let Coin::Quarter(state) = coin else {
-    return None;
+<p>第一眼看过去你可能会懵：为什么是 <code>let</code> 开头而不是 <code>if</code>？</p>
+<p>想想 <code>if let</code> 为什么带 <code>if</code>——因为它<strong>确实是在做判断</strong>："如果匹配上了，进这个块执行"。</p>
+<p>而 <code>let...else</code> 的重点不是判断，是<strong>绑定变量</strong>——"我要把值拆出来绑给 x，拆不出来我就直接走人（return/panic）"：</p>
+<pre class="code-block" data-lang="rust"><code>let Some(x) = maybe else {
+    return;  // 拆不出来就滚蛋——后面的代码都不用看了
 };
-// 走到这里说明 state 已经绑定——走&quot;愉快路径&quot;</code></pre>
+// 能走到这，说明一定拿到了，后面直接用</code></pre>
+<p>再看跟 <code>if let</code> 的实际区别：</p>
+<pre class="code-block" data-lang="rust"><code>// if let：解出来的 x 困在大括号里，外面用不了
+if let Some(x) = maybe {
+    println!("{}", x);  // 只能在这里用 x
+}
+// println!("{}", x);  // ❌ x 已经没了
+
+// let...else：解出来的 x 在外面，后面接着用
+let Some(x) = maybe else {
+    return;
+};
+println!("{}", x);  // ✅ x 还在——不用把后续逻辑缩进一层</code></pre>
+<p>一句话区分：<code>if let</code> = "如果匹配，做这件事"（分支逻辑，所以有 <code>if</code>）；<code>let...else</code> = "我要这个值，拿不到就走人"（绑定 + 保底，所以用 <code>let</code>）。</p>
 <p><strong>vs Java</strong>：类似 Java 中的 guard 模式：</p>
 <pre class="code-block" data-lang="java"><code>if (!(x instanceof String s)) return null;
-// 这里 s 可用</code></pre>
-<p>Rust 的 <code>let...else</code> 更简洁、更 Rust 味。</p>
+// 这里 s 可用——同样思路，先挡掉不合法的情况</code></pre>
+<h2>6.6 match、if let、let...else —— 其实是一家人</h2>
+<p>学到这里你可能觉得语法好多，但其实这三个<strong>本质上是同一个东西</strong>——都是 <code>match</code> 的变体，只是场景不同。类比 Java 的 <code>switch</code> 就是：完整版、单分支版、单分支 + 提前退出版。</p>
+<pre class="code-block" data-lang="rust"><code>// ② if let = match 只写一个分支，其余用 _ 忽略
+//    match 完整写法：                       if let 简写：
+//    match coin {                          if let Coin::Quarter(state) = coin {
+//        Coin::Quarter(state) => {             println!("{:?}", state);
+//            println!("{:?}", state);      }
+//        }
+//        _ => ()
+//    }
+
+// ③ let...else = match 只写一个分支，其余直接 return
+//    match 完整写法：                       let...else 简写：
+//    match coin {                          let Coin::Quarter(state) = coin else {
+//        Coin::Quarter(state) => {             return;
+//            // 用 state                   };
+//        }                                 // 走到这 state 一定可用了
+//        _ => return,
+//    }</code></pre>
+<p>注意 ③ 里的 <code>return</code> 是函数控制流关键字，不是 <code>let...else</code> 特有的——你也可以在 <code>match</code> 的分支里写 <code>_ => return</code>，效果一样。<code>let...else</code> 只是把这个模式封装成了一个更简洁的语法。</p>
 <hr>
 <h2>📌 Java 开发者速查表</h2>
 <div class="table-wrap"><table><thead><tr><th>概念</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>枚举定义</td><td><code>enum E { A, B }</code></td><td><code>enum E { A, B }</code></td></tr><tr><td>访问变体</td><td><code>E::A</code>（<code>::</code>——双冒号）</td><td><code>E.A</code>（<code>.</code>——单点）</td></tr><tr><td>变体携带数据</td><td>✅ <code>V4(u8,u8,u8,u8)</code>——每个变体可以带不同数据</td><td>❌ 需要额外字段或子类来绕</td></tr><tr><td>不同类型的数据</td><td>✅ 每个变体可完全不同——自由度极高</td><td>❌ 统一结构，没法不同</td></tr><tr><td>枚举方法</td><td><code>impl E { fn m(&self){} }</code></td><td>定义在 enum 体内</td></tr><tr><td>"null" 安全</td><td><code>Option&lt;T&gt;</code>——语言内置，编译器强制处理</td><td><code>Optional&lt;T&gt;</code>——不是语言内置，NPE 依然存在</td></tr><tr><td>强制处理 null</td><td>✅ 编译器检查，不处理就编译不过</td><td>❌ NPE 是运行时异常，编译器睁一只眼闭一只眼</td></tr><tr><td>分支匹配</td><td><code>match</code>（穷尽性检查——不全部覆盖就报错）</td><td><code>switch</code> 语句不强制覆盖；但 Java 14+ <code>switch 表达式</code>对 enum 有穷尽性检查</td></tr><tr><td>提取匹配中的数据</td><td><code>Some(i)</code> 自动绑定——值直接拆出来用</td><td><code>case String s</code>（Java 17+ 才支持）</td></tr><tr><td>单分支简写</td><td><code>if let</code>——只关心一种情况时的语法糖</td><td>switch 单分支</td></tr><tr><td>提前返回模式</td><td><code>let...else</code>——不匹配就走人</td><td>guard + return</td></tr><tr><td>通配</td><td><code>_</code> 或 <code>other</code></td><td><code>default</code></td></tr></tbody></table></div>
