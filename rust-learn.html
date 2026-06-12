@@ -1582,19 +1582,124 @@ println!("{}", x);  // ✅ x 还在——不用把后续逻辑缩进一层</code
 <p><strong>核心</strong>：Rust 的模块系统骨子里像 Java 的 <code>package</code> + <code>import</code>，但规则更有"仪式感"——你得显式告诉编译器"这有个模块"，而不是靠目录猜</p>
 </blockquote>
 <hr>
-<h2>7.1 基本概念</h2>
-<p>先从两个容易混的概念开刀：<strong>crate</strong> 和 <strong>包（package）</strong>。</p>
-<h3>Crate vs 包（Package）</h3>
-<p>你可以把 crate 想象成"编译的最小颗粒"——编译器一次吃一个 crate。包则是 Cargo 眼里的"项目"，是一个可以发布到 crates.io 的东西。一个包里面可以装好几个 crate。</p>
-<div class="table-wrap"><table><thead><tr><th>概念</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td><strong>编译单元</strong></td><td><strong>crate</strong>（库或二进制）</td><td>Java 源文件是 compilation unit，发布/复用常以 JAR 为单位</td></tr><tr><td><strong>可执行入口</strong></td><td>二进制 crate（有 <code>main</code>）</td><td><code>public static void main</code></td></tr><tr><td><strong>库</strong></td><td>库 crate（无 <code>main</code>，可复用）</td><td>JAR 文件</td></tr><tr><td><strong>包（package）</strong></td><td>一个或多个 crate + <code>Cargo.toml</code>，是 Cargo 的发布/构建单位</td><td>Java <code>package</code> 是命名空间；构建发布通常由 Maven/Gradle 模块和 JAR 表达</td></tr><tr><td><strong>源码入口</strong></td><td><code>src/main.rs</code> 或 <code>src/lib.rs</code></td><td>按约定</td></tr></tbody></table></div>
-<p><strong>关键规则</strong>：</p>
+<h2>7.1 从一个你可能没注意到的真相开始</h2>
+
+<h3>你已经写了很多 crate 了</h3>
+<p>回顾一下，从第一章到现在，你每次 <code>cargo new</code> 建项目，Cargo 都会给你生成一个 <code>src/main.rs</code>。你在这个文件里写 <code>fn main()</code>，然后 <code>cargo run</code> 跑起来。</p>
+<p>你可能没意识到：<strong>这个 <code>main.rs</code>，就是一个 crate</strong>。</p>
+<p>Crate（发音"克瑞特"）就是<strong>编译器一次编译的单元</strong>。你跑 <code>cargo build</code>，编译器就是在编译一个一个的 crate。你之前的每一个项目，不管多简单，都包含至少一个 crate。</p>
+<pre class="code-block" data-lang="">hello-world/              ← 你最开始的第一个项目
+├── Cargo.toml
+└── src/
+    └── main.rs           ← 就这一个文件，就是一个 crate</code></pre>
+<p>这种有 <code>main()</code>、能直接跑的 crate，叫<strong>二进制 crate</strong>（binary crate）。到目前为止，你写的全都是这种。</p>
+
+<h3>问题来了：代码想复用怎么办？</h3>
+<p>现在假设你写了一个日期解析的项目，<code>main.rs</code> 里有一堆函数：</p>
+<pre class="code-block" data-lang="rust"><code>// src/main.rs —— 所有代码都在这里
+fn parse_date(input: &str) -> Date { ... }
+fn format_date(date: Date) -> String { ... }
+fn validate_date(date: Date) -> bool { ... }
+
+fn main() {
+    let d = parse_date("2024-01-15");
+    println!("{}", format_date(d));
+}</code></pre>
+<p>问题来了：<strong>另一个项目也想用 <code>parse_date</code>，咋办？</strong></p>
+<p>你不能把这个 <code>main.rs</code> 引到别的项目——它有 <code>main()</code>，是拿来跑的，不是拿来复用的。你总不能复制粘贴一份过去吧？那改 bug 的时候两边一起改，人都要疯了。</p>
+
+<h3>解决：把可复用的代码挪到 lib.rs</h3>
+<p>Rust 的做法很简单：加一个 <code>lib.rs</code>，把想复用的功能放进去：</p>
+<pre class="code-block" data-lang="">date-parser/
+├── Cargo.toml              ← name = "date-parser"
+└── src/
+    ├── lib.rs              ← 把功能放这里
+    └── main.rs             ← 主程序，用 lib.rs 的功能</code></pre>
+<pre class="code-block" data-lang="rust"><code>// src/lib.rs —— 没有 main()，不跑，只管提供功能
+// pub = 公开，别人能用；不加 pub = 私有，外面碰不到
+
+pub fn parse_date(input: &str) -> String {
+    // 解析逻辑...
+    input.to_string()
+}
+
+pub fn format_date(date: &str) -> String {
+    // 格式化逻辑...
+    date.to_string()
+}
+
+fn internal_helper() {
+    // 这个没加 pub，外面看不见——内部实现细节
+}</code></pre>
+<pre class="code-block" data-lang="rust"><code>// src/main.rs —— 主程序，调 lib.rs 里的函数
+// 同一个包里，用 use + 包名就能引入 lib.rs 暴露的东西
+// 包名看 Cargo.toml 里的 name 字段，横杠自动变下划线
+
+use date_parser::parse_date;     // 从库里引
+
+fn main() {
+    let result = parse_date("2024-01-15");
+    println!("解析结果：{}", result);
+}</code></pre>
+<p><code>lib.rs</code> 就是个<strong>展示柜台</strong>：你把想公开的函数、结构体用 <code>pub</code> 摆出来，<code>main.rs</code> 就能 <code>use</code> 它们。不想公开的？不加 <code>pub</code> 就行，外面谁也碰不到。</p>
+<p>而且——别的项目也能用！只要在 <code>Cargo.toml</code> 里加依赖，就能 <code>use date_parser::parse_date</code>。这就是 <code>serde</code>、<code>rand</code> 这些库干的事。</p>
+<p>这种没有 <code>main()</code>、专门给别人用的 crate，叫<strong>库 crate</strong>（library crate）。</p>
+<p>现在你的项目有两个 crate 了：</p>
+<pre class="code-block" data-lang="">date-parser/
+├── Cargo.toml
+└── src/
+    ├── lib.rs      ← 库 crate（给别人用）
+    └── main.rs     ← 二进制 crate（自己跑）</code></pre>
+
+<h3>项目大了：lib.rs 变成门面</h3>
+<p>上面的例子，代码全塞 <code>lib.rs</code> 里，小项目没问题。但项目一大，一个文件装不下，你得拆：</p>
+<pre class="code-block" data-lang="">date-parser/
+├── Cargo.toml
+└── src/
+    ├── lib.rs          ← 门面：拉人 + 暴露
+    ├── parsing.rs      ← 解析相关代码
+    ├── validation.rs   ← 校验相关代码
+    └── main.rs         ← 主程序</code></pre>
+<p>这时候 <code>lib.rs</code> 不装具体代码了，变成"牵线人"：</p>
+<pre class="code-block" data-lang="rust"><code>// src/lib.rs —— 不写逻辑了，只干两件事
+mod parsing;        // 告诉编译器：去 src/parsing.rs 找这个模块
+mod validation;     // 告诉编译器：去 src/validation.rs 找这个模块
+
+pub use parsing::*;      // 把里面的公开内容暴露出去
+pub use validation::*;</code></pre>
+<p>真正的代码在 <code>parsing.rs</code> 和 <code>validation.rs</code> 里。<code>lib.rs</code> 的角色从"装代码"变成了<strong>"告诉外面有啥能用"的门面</strong>——<code>mod</code> 把文件拉进来，<code>pub use</code> 往外暴露。</p>
+<p>注意：这仨文件（lib.rs + parsing.rs + validation.rs）<strong>编译在一起，还是只算 1 个库 crate</strong>。不是"一个 .rs 文件 = 一个 crate"，而是"入口文件 + 它通过 <code>mod</code> 拉进来的所有文件 = 一个 crate"。</p>
+
+<h3>还想多几个程序？bin/ 目录安排</h3>
+<p>有时候你除了主程序，还想加几个小工具——比如一个性能测试、一个数据导入脚本。它们都有各自的 <code>main()</code>，各自独立运行。</p>
+<p>放到 <code>src/bin/</code> 下就行：</p>
+<pre class="code-block" data-lang="">date-parser/
+├── Cargo.toml
+└── src/
+    ├── lib.rs          ← 库 crate（1 个）
+    ├── parsing.rs      ┘
+    ├── validation.rs   ┘
+    ├── main.rs         ← 二进制 crate #1（cargo run 默认跑这个）
+    └── bin/
+        ├── bench.rs    ← 二进制 crate #2（cargo run --bin bench）
+        └── import.rs   ← 二进制 crate #3（cargo run --bin import）</code></pre>
+<p><code>bin/</code> 下的每个文件都是独立的二进制 crate——各有各的 <code>main()</code>，互不干扰。而且它们都能 <code>use</code> <code>lib.rs</code> 暴露出来的代码，共享同一份库逻辑。</p>
+
+<h3>现在回头，给概念起个名字</h3>
+<p>经过上面的折腾，你已经把这几个概念用了个遍了。现在正式给它们安个名字：</p>
 <ul>
-<li>一个包（package）<strong>至多一个库 crate</strong>，可以任意多个二进制 crate</li>
-<li><code>src/main.rs</code> → 与包同名的二进制 crate 根</li>
-<li><code>src/lib.rs</code> → 与包同名的库 crate 根</li>
-<li><code>src/bin/*.rs</code> → 额外的二进制 crate</li>
+<li><strong>Crate</strong>（编译单元）：编译器一次编译的最小单位。分两种：<strong>库 crate</strong>（从 <code>lib.rs</code> 开始，没有 <code>main()</code>，给别人用）和<strong>二进制 crate</strong>（从 <code>main.rs</code> 或 <code>bin/*.rs</code> 开始，有 <code>main()</code>，能跑）。入口文件 + 它拉进来的所有模块 = 1 个 crate</li>
+<li><strong>包（package）</strong>：整个项目文件夹，一个 <code>Cargo.toml</code> + 里面的所有 crate。上面 <code>date-parser/</code> 那个文件夹就是一个包</li>
 </ul>
-<p>说人话：一个项目里可以有好多独立的可执行程序（<code>src/bin/</code> 下面），但库只有一个。这跟 Java 一个模块里可以塞好多 <code>main</code> 类不一样。</p>
+<p>数 crate 的方法很简单：</p>
+<ul>
+<li>有 <code>lib.rs</code>？→ +1 库 crate</li>
+<li>有 <code>main.rs</code>？→ +1 二进制 crate</li>
+<li><code>bin/</code> 下有几个 <code>.rs</code>？→ +几个二进制 crate</li>
+</ul>
+<p>上面的 <code>date-parser</code> 例子：1（库）+ 3（main + bench + import）= <strong>4 个 crate</strong>。</p>
+<p>⚠️ <strong>铁律</strong>：一个包最多 <strong>1 个库 crate</strong>（只能有一个 <code>lib.rs</code>），但<strong>二进制 crate 随便加</strong>。</p>
+<p>💡 <strong>还有更狠的</strong>：项目大到"一个包装不下"怎么办？Rust 有 <strong>workspace</strong>——一个根目录下挂多个包，每个包各有各的 <code>Cargo.toml</code> 和 <code>src/</code>，但共享一个 <code>Cargo.lock</code>，<code>cargo build</code> 一次全编译。这个后面第 14 章再细讲，先知道有这么个东西就行。</p>
 <h3>模块树</h3>
 <p>Rust 的模块就是一棵树，根是 <code>crate</code>，往下分叉：</p>
 <pre class="code-block" data-lang=""><code>crate
