@@ -2229,54 +2229,72 @@ for (String word : text.split(&quot; &quot;)) {
 </blockquote>
 <hr>
 <h2>9.1 <code>panic!</code> —— 程序 bug / 无法正常处理的错误状态</h2>
-<p><code>panic!</code> 是 Rust 里的"核选项"：不是用来处理"文件找不到"这种日常小磕碰的，而是用来应对"程序员写错了"或者"再继续跑下去会产生更严重的问题"这种级别的状况。</p>
-<h3>触发方式</h3>
-<pre class="code-block" data-lang="rust"><code>// 显式调用——你自己决定&quot;到这一步没法继续了&quot;
-panic!(&quot;crash and burn&quot;);
+<p><code>panic!</code> 是 Rust 里的"掀桌子走人"——不是用来对付"文件找不到"这种日常翻车的（那是下一节 <code>Result</code> 的活），而是程序发现"卧槽这代码本身就不对劲，再硬撑下去只会更惨"时按下的自爆按钮。打个比方：你写的代码算出来"用户年龄 = -500 岁"，这种烂数据再往下传纯属添乱，不如当场 <code>panic!</code>，把锅摔在地上让大家看个清楚。</p>
+<h3>怎么触发</h3>
+<pre class="code-block" data-lang="rust"><code>// 方式一：你亲手按下自爆按钮——自己喊出来
+panic!("心态崩了，这活没法干了");
+// 程序会把这句话打印出来，然后当场退出
 
-// 隐式触发：数组越界、unwrap 失败等——第三方库的代码替你 panic
+// 方式二：Rust 替你按——你踩了雷，它替你 panic
 let v = vec![1, 2, 3];
-v[99];  // panic! —— 根本没有第 99 个元素</code></pre>
-<h3>行为</h3>
-<pre class="code-block" data-lang=""><code>默认：展开（unwinding）→ 沿着调用栈一层层退出 + 清理资源 + 进程退出
-配置：panic = 'abort'   → 直接终止进程，不清理（二进制更小，适合嵌入式）</code></pre>
-<pre class="code-block" data-lang="toml"><code># Cargo.toml
+v[99];   // panic! —— 数组拢共就 3 个，你问第 99 个？想桃子</code></pre>
+<h3>panic 之后会发生啥</h3>
+<p>程序退出前有两种"告别姿势"，默认是第一种：</p>
+<pre class="code-block" data-lang=""><code>默认：unwinding（展开）
+→ 像打烊的店员，一层层关灯、锁门、把现场收拾干净，最后才走
+→ 调用栈逐层退出，该跑的 Drop 清理照跑，资源该释放的都释放掉
+
+可选：panic = 'abort'（中止）
+→ 像直接拔电源，啥都不管，进程当场咽气
+→ 不展开栈，不跑 Drop，说走就走</code></pre>
+<pre class="code-block" data-lang="toml"><code># 想让 release 模式直接 abort，在 Cargo.toml 里加这两行
 [profile.release]
 panic = 'abort'</code></pre>
-<p>在发布模式下设成 <code>abort</code> 可以减小二进制体积，因为不用塞 unwinding 的代码进去。代价是 panic 时不会跑 Drop 清理逻辑——但 release 模式下本来就不该 panic，所以这属于"用不上就扔掉"的优化。</p>
-<p><strong>vs Java</strong>：</p>
-<pre class="code-block" data-lang="java"><code>// Java：异常可以被捕获——哪怕是 RuntimeException
-// ArrayIndexOutOfBoundsException 也是 RuntimeException
-// 但可以用 try-catch 捕获，程序还能继续
+<p>为啥 <code>abort</code> 能让二进制变小？因为 <code>unwinding</code> 得往程序里塞一堆"撤退时收拾现场"的代码，<code>abort</code> 直接把这套全省了，体积自然就下来了。代价是 panic 时不会跑 <code>Drop</code> 清理——但话说回来，release 模式下你本就不该 panic，所以这套清理代码属于"带着也是累赘"，删了不可惜。嵌入式设备内存抠到字节级别，经常这么干。</p>
+<h3>vs Java：最容易栽跟头的地方在这</h3>
+<p>Java 转 Rust 最大的认知冲击就一句：<strong>Java 的异常能接住，Rust 的 panic 接不住</strong>（至少没有 <code>try-catch</code> 这种顺手的方式）。</p>
+<pre class="code-block" data-lang="java"><code>// Java：异常是"可以商量的同事"——出错了 try-catch 接住，继续装没事
+// 哪怕是数组越界这种 RuntimeException，照样能 catch
 try {
     int x = arr[99];
 } catch (ArrayIndexOutOfBoundsException e) {
-    // 可以恢复——在 Java 里异常是控制流的一部分
+    // 接住了，程序接着跑——在 Java 里，异常就是控制流的一部分
 }</code></pre>
-<pre class="code-block" data-lang="rust"><code>// Rust：不能用 try-catch 语法捕获 panic
-let x = v[99];  // 直接崩溃，没有后悔药</code></pre>
+<pre class="code-block" data-lang="rust"><code>// Rust：panic 是"掀桌子走人"，没有后悔药
+let x = v[99];   // 直接崩，当场去世，不给你 catch 的机会</code></pre>
 <blockquote>
-<p>💡 <code>panic!</code> 更接近"程序无法沿当前路径继续"的失败信号，而不是业务错误返回值。默认 unwinding 模式下可以用 <code>catch_unwind</code> 做边界隔离，但<strong>不应把 panic 当 Java <code>catch</code> 来写常规控制流</strong>。Java 里你经常 <code>catch (Exception e)</code> 就当没事发生，Rust 里这种做法是反模式。</p>
+<p>💡 一句话总结：<code>panic!</code> 是程序在喊"我废了，这活没法干了"，而不是"这个操作失败了，你看着办"。前者直接停工，后者还得接着聊。日常的小失败（文件找不到、网络断了）走下一节的 <code>Result</code>；<code>panic!</code> 留给"代码本身就有 bug"或"数据烂到家了，再传下去要出大乱子"这种情况。Java 里你习惯了 <code>catch (Exception e)</code> 当无事发生，这套在 Rust 里是反模式，趁早别养成习惯。</p>
 </blockquote>
-<h3>补充：<code>catch_unwind</code> 可以捕获 panic</h3>
-<p>Rust 确实存在"捕获 panic"的手段，但带着"不得已而为之"的味道：</p>
+<h3>补充：<code>catch_unwind</code> —— 能接住 panic，但别当日常工具</h3>
+<p>Rust 其实藏着一把能"接住 panic"的武器，但它浑身刻着"非必要不使用"五个字：</p>
 <pre class="code-block" data-lang="rust"><code>use std::panic;
 
 let result = panic::catch_unwind(|| {
-    panic!(&quot;something went wrong&quot;);
+    panic!("出大事了");
 });
 match result {
-    Ok(_) =&gt; println!(&quot;没有 panic&quot;),
-    Err(_) =&gt; println!(&quot;捕获到 panic！程序继续运行&quot;),
+    Ok(_)  => println!("风平浪静"),
+    Err(_) => println!("接住一个 panic，但程序还活着"),
 }</code></pre>
 <ul>
-<li>仅在默认的 <strong>unwinding</strong> 模式下有效（<code>panic = 'abort'</code> 模式下无法捕获——进程直接没了）</li>
-<li><strong>不推荐</strong>用于常规错误处理——应该用 <code>Result</code>。这就像 Java 里你不会用 <code>catch (Throwable)</code> 来处理业务逻辑一样</li>
-<li>适用场景：服务器防止单个请求崩溃整个服务、FFI 边界隔离（C 代码里可不能 unwind）</li>
+<li>只在默认的 <strong>unwinding</strong> 模式下管用——<code>panic = 'abort'</code> 时进程直接没了，<code>catch_unwind</code> 也接不到（人都没了还抢救啥）</li>
+<li><strong>别拿它当 Java 的 <code>catch</code> 用</strong>——正经错误处理走 <code>Result</code>。这就好比 Java 里你不会拿 <code>catch (Throwable)</code> 写业务逻辑</li>
+<li>真正的用武之地：Web 服务器隔离单个请求（一个请求炸了别拖垮整个服务）、FFI 边界（C 代码那边的栈没法 unwind，panic 越界过去就完蛋）</li>
 </ul>
-<h3>Backtrace</h3>
-<pre class="code-block" data-lang="bash"><code>$ RUST_BACKTRACE=1 cargo run</code></pre>
-<p>类似 Java 的异常堆栈，帮你顺着调用链找到 panic 的源头。调试神器，记得在 <code>.bashrc</code> 里设成 <code>RUST_BACKTRACE=full</code>。</p>
+<h3>Backtrace：panic 了怎么倒查原因</h3>
+<p>默认情况下，程序 panic 时只甩给你一行冷冰冰的提示，告诉你"在 <code>src/main.rs:10</code> 这一行炸了"——但它<strong>不会告诉你"是怎么一步步走到第 10 行的"</strong>。就像 Java 异常只给你一行错误、不给你堆栈，你压根无从下手。不设环境变量时，输出长这样：</p>
+<pre class="code-block" data-lang=""><code>thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 99', src/main.rs:10:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</code></pre>
+<p>注意最后一行 <code>note:</code>——Rust 在贴心地提醒你：想看调用链？给它开个环境变量就行。这个变量叫 <code>RUST_BACKTRACE</code>，开了之后 Rust 就会把"从程序启动到 panic 为止调用过的所有函数"一长串全打印出来，跟 Java 异常堆栈一个意思，顺着它就能倒查出到底是哪条调用路径踩的雷。</p>
+<p>怎么开？两种姿势：</p>
+<pre class="code-block" data-lang="bash"><code># 姿势一：临时开——在这条命令前面加一截，只影响这次运行
+$ RUST_BACKTRACE=1 cargo run
+
+# 姿势二：永久开——写进 shell 配置文件，以后自动生效，省得每次手敲
+# （macOS 默认 zsh → 写进 ~/.zshrc；Linux bash → 写进 ~/.bashrc）
+$ echo 'export RUST_BACKTRACE=full' &gt;&gt; ~/.zshrc
+$ source ~/.zshrc   # 让它立刻生效，不用重开终端</code></pre>
+<p><code>=1</code> 和 <code>=full</code> 的区别：用 <code>=1</code> 时 Rust 会贴心地省略掉一些它自己内部的细节帧（通常够你排查了）；想连 Rust 内部那些调用都看个底朝天，就用 <code>=full</code>。日常调试 <code>=1</code> 够用，疑难杂症再上 <code>=full</code>。</p>
 <hr>
 <h2>9.2 ⭐ <code>Result&lt;T, E&gt;</code> —— 可恢复错误</h2>
 <p>如果说 <code>panic!</code> 是核弹按钮，那 <code>Result</code> 就是日常工具箱。文件找不到？网络超时？用户输入格式不对？——全走 <code>Result</code>，把失败当作"返回值"而不是"中断控制流"来传。</p>
@@ -2406,6 +2424,16 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
     Ok(())
 }</code></pre>
 <p><code>main</code> 返回 <code>Result</code> 后，成功退出码为 0，错误退出码非 0——命令行工具的标准行为。</p>
+<p>第一次见这个 <code>Box&lt;dyn Error&gt;</code> 肯定一脸懵：<code>dyn</code> 是啥？<code>Box</code> 又是啥？别慌，先给你个能用的直觉，细节后面章节细讲。把它拆开看，就是个"啥错误都能装的万能口袋"：</p>
+<ul>
+<li><code>Error</code> —— 一个 trait（特征），约等于 Java 的接口：所有错误类型都得实现它，才算"合格的错误"。</li>
+<li><code>dyn Error</code> —— "trait 对象"：不管具体是哪种错误，只要实现了 <code>Error</code> 就能塞进来。类比 Java 里用 <code>Exception</code> 父类引用指向任何子类异常。</li>
+<li><code>Box&lt;...&gt;</code> —— 把它放堆上（因为 <code>dyn Error</code> 大小不定，只能堆放）。Java 里对象本来就活在堆上，所以这步对你约等于无感。</li>
+</ul>
+<p>为啥 <code>main</code> 非得用这个万能口袋？因为 <code>?</code> 会把错误一路往上抛，而 <code>Result</code> 的错误类型只能填一个——可 <code>main</code> 里可能撞上文件错误、IO 错误一堆花样。与其一个个列，不如直接 <code>Box&lt;dyn Error&gt;</code> 兜底，啥都能装。这就像 Java 里图省事直接 <code>throws Exception</code>，啥异常都往外甩。</p>
+<blockquote>
+<p>📌 <code>Box</code> 在 <strong>第 15 章</strong>（智能指针）正式讲，<code>dyn</code>（trait 对象）在 <strong>第 18 章</strong>正式讲。这里你只要记住一句话：<code>Box&lt;dyn Error&gt;</code> ≈ Java 的 <code>throws Exception</code>，一个偷懒的"啥错误都能抛"的写法，先能用就行。真到了正经项目，会有更精细的自定义错误类型（本章末尾就提了这事）。</p>
+</blockquote>
 <hr>
 <h2>9.3 <code>panic!</code> 还是 <code>Result</code>？—— 指导原则</h2>
 <p>这是一个 Rust 新人经常纠结的问题。判断标准其实就一条：<strong>这个错误，调用者有可能恢复吗？</strong></p>
