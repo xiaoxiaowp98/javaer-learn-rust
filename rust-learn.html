@@ -1973,12 +1973,10 @@ use std::io::{self, Write};  // 拆开看就是两条：
 <h2>8.1 <code>Vec&lt;T&gt;</code> —— 动态数组</h2>
 <p><code>Vec&lt;T&gt;</code> 就是 Rust 的 <code>ArrayList&lt;T&gt;</code>：想加就加，想删就删，内存自动伸縮。用起来顺手得很，但所有权那根弦得一直绷着。</p>
 <h3>创建与修改</h3>
-<pre class="code-block" data-lang="rust"><code>// 创建
-let v: Vec&lt;i32&gt; = Vec::new();
-let v = vec![1, 2, 3];          // vec! 宏，类型自动推断——省事
-
-// 增删
-let mut v = Vec::new();
+<pre class="code-block" data-lang="rust"><code>// 创建——三种姿势
+let v: Vec&lt;i32&gt; = Vec::new();    // 空数组，不可变——通常你不会这样写，没东西也不能改
+let v = vec![1, 2, 3];          // vec! 宏：一行搞定初始化，有初始值，类型自动推断
+let mut v = Vec::new();         // 空数组，可变——准备往里塞东西
 v.push(5);
 v.push(6);
 v.pop();                         // 移除并返回最后一个元素 → Some(6)</code></pre>
@@ -1988,16 +1986,27 @@ ArrayList&lt;Integer&gt; v = new ArrayList&lt;&gt;();
 v.add(5);
 v.add(6);
 v.remove(v.size() - 1);         // 移除最后一个——比 Rust 啰嗦多了</code></pre>
-<p><code>vec!</code> 这个宏简直是 Rust 送你的一块糖：不用 <code>Vec::new()</code> 再推元素，一行搞定初始化。Java 里你至少得 <code>Arrays.asList(1, 2, 3)</code>（Java 9+ 可以用 <code>List.of(1, 2, 3)</code>），但没法直接 mut。</p>
+<p><code>vec!</code> 是 Rust 内置的一个<strong>宏</strong>（macro）——注意那个感叹号 <code>!</code>，有 <code>!</code> 的就是宏，不是普通函数。宏可以理解为"编译器帮你写的代码生成器"：<code>vec![1, 2, 3]</code> 实际上会被展开成 <code>Vec::new()</code> + 三个 <code>push()</code>，只不过编译器替你干了，一行搞定。Java 里没有宏的概念，最接近的是 <code>List.of(1, 2, 3)</code>，但那个是方法，Rust 的宏比方法强大得多（后面第 19 章细讲）。</p>
 <h3>读取元素：索引 vs <code>get()</code></h3>
 <p>Rust 给你两根筷子：一根钢的（<code>[]</code>），一根竹的（<code>get()</code>）。选哪根，取决于你对越界的容忍度。</p>
 <pre class="code-block" data-lang="rust"><code>let v = vec![1, 2, 3, 4, 5];
 
-// 方式 1：索引 —— 越界会 panic!（当场炸给你看）
-let third: &amp;i32 = &amp;v[2];
+// 直接取值：i32 是 Copy 类型，直接复制一份出来
+let third: i32 = v[2];          // ✅ 复制值，third 跟 v 没关系了
 
-// 方式 2：get() —— 返回 Option，越界返回 None（优雅转身）
-let third: Option&lt;&amp;i32&gt; = v.get(2);
+// 借用取值：拿到的是引用，指向 Vec 里的那个元素
+let third: &amp;i32 = &amp;v[2];       // ✅ 借用，third 还指向 v 里的元素
+
+// 两种取值方式都能用，区别在于：
+// - Copy 类型（i32、f64、bool 等）：用哪个都行，直接取值更简单
+// - 非 Copy 类型（String 等）：只能借用（&v[2]），直接取会报错，因为不能从 Vec 里搬走
+
+// 那 get() 呢？区别在于越界的处理方式：
+// 索引 [] —— 越界直接 panic!（当场炸给你看）
+let third = v[100];            // 💥 panic! 越界了
+
+// get() —— 越界返回 None，不会崩，你来决定怎么处理
+let third = v.get(100);        // → None，程序继续跑
 match third {
     Some(val) =&gt; println!(&quot;{val}&quot;),
     None =&gt; println!(&quot;越界了，但我没崩！&quot;),
@@ -2139,6 +2148,11 @@ scores.insert(String::from(&quot;Yellow&quot;), 50);
 
 // 读取——返回 Option，不会给你 null
 let score = scores.get(&quot;Blue&quot;).copied().unwrap_or(0);
+	// 这一行拆开看：
+	// scores.get("Blue")    → Option&lt;&amp;i32&gt;（找到就是 Some(&amp;10)，没找到就是 None）
+	// .copied()             → Option&lt;i32&gt;（把引用 &amp;i32 复制一份变成 i32；因为后面 .unwrap_or(0) 里的 0 是个 i32 值，它要跟 Option&lt;i32&gt; 配对）
+	// .unwrap_or(0)         → i32（有值就拿出来，None 就给你默认的 0）
+	// 三步串起来 = Java 的 getOrDefault("Blue", 0)</code></pre>
 
 // 遍历——直接解构 key-value，比 Java 舒服
 for (key, value) in &amp;scores {
