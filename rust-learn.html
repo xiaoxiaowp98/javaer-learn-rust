@@ -2711,85 +2711,60 @@ let s = 3.to_string();  // i32 实现了 Display，所以自动实现了 ToStrin
 <p>这就叫"地毯式实现"——只要一个类型满足某条件，就自动获得某个 trait 的能力。标准库就靠这一招，让所有能 <code>Display</code> 的东西自动能 <code>to_string()</code>。懒人福音。</p>
 <hr>
 <h2>10.3 ⭐ 生命周期（Lifetimes）—— Java 没有的概念</h2>
-<h3>为什么要生命周期？</h3>
-<p>先看一个"请勿模仿"的例子：</p>
+<p>先说大白话：<strong>生命周期就是引用的"保质期"</strong>。一个引用指向某个数据，这个引用只能在数据还活着的时候用——数据没了，引用就成了一张废纸（术语叫"悬垂引用"，dangling reference）。Rust 干的事，就是在<strong>编译期</strong>盯着每张引用的保质期，看它有没有超过所指向数据的保质期；超了就当场拦下，不让你编译。</p>
+<p>Java 程序员可能想："这不就是 NPE 嘛，运行时抛个异常。"——不一样。Rust 是<strong>编译期</strong>就挡掉，根本不给你上线后心惊胆战翻日志的机会。</p>
+<h3>先看个"请勿模仿"的悬垂引用</h3>
 <pre class="code-block" data-lang="rust"><code>fn main() {
-    let r;              // ---------+ 'a
-    {                   //          |
-        let x = 5;      // -+ 'b    |
-        r = &amp;x;         //  |       |
-    }                   // -+       |
-    println!(&quot;{r}&quot;);    //          | ❌ x 已经被释放了！
-}                       // ---------+</code></pre>
-<p>简单说：<code>r</code> 是个引用，指着 <code>x</code>；但 <code>x</code> 只在花括号里面活着，出了花括号就死了。<code>r</code> 却还想在花括号外面继续用它指的东西——这不就是悬垂引用吗？Rust 的<strong>借用检查器</strong>（borrow checker）在编译时就喊停了：<code>r</code> 的生命周期 <code>'a</code> 比 <code>x</code> 的生命周期 <code>'b</code> 更长，引用会悬垂 → <strong>编译错误</strong>。</p>
-<p>Java 程序员可能会想："哦这不就是 NPE 吗？运行时抛异常而已嘛。"不，Rust 直接不让你编译通过。它把这类问题挡在了<strong>编译期</strong>，而不是让你上线以后心惊胆战地看着日志刷屏。</p>
-<h3>函数中的生命周期注解</h3>
-<pre class="code-block" data-lang="rust"><code>// ❌ 编译错误：不知道返回值引用的是 x 还是 y
-fn longest(x: &amp;str, y: &amp;str) -&gt; &amp;str { ... }
-
-// ✅ 添加生命周期注解：返回值存活时间不超过 x 和 y 中较短的那个
-fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str {
+    let r;                // r 的保质期比较长（外层）
+    {
+        let x = 5;        //     x 的保质期比较短（内层）
+        r = &amp;x;           //     r 借了 x——可 x 马上就要到期了！
+    }                     //     x 到期被回收 💀
+    println!(&quot;{r}&quot;);      // r 还想用？❌ x 早没了，r 是张废纸
+}</code></pre>
+<p>这里有两个寿命不同的东西：<code>r</code>（外层，寿命长）和 <code>x</code>（内层，寿命短）。为讲清楚，给它们各起个名——<code>r</code> 的寿命叫 <code>'a</code>，<code>x</code> 的寿命叫 <code>'b</code>。<code>r</code> 借了 <code>x</code>，但 <code>x</code>（<code>'b</code>）比 <code>r</code>（<code>'a</code>）先死——借用检查器一看："你这张借条的保质期，比东西本身还长，不行"，直接编译报错。</p>
+<p>⚠️ 注意：<strong>这里就冒出了两个生命周期 <code>'a</code> 和 <code>'b</code></strong>——只要有两个寿命不同的引用或数据，就会涉及多个生命周期。下面函数签名里你会频繁碰到。</p>
+<h3>函数签名里的生命周期：返回值到底跟谁绑？</h3>
+<p>这才是生命周期注解真正派上用场的地方。看这个函数：</p>
+<pre class="code-block" data-lang="rust"><code>// ❌ 编译器懵了：返回的引用到底跟 x 还是 y 绑？
+fn longest(x: &amp;str, y: &amp;str) -&gt; &amp;str {
     if x.len() &gt; y.len() { x } else { y }
 }</code></pre>
-<p><strong>语法</strong>：</p>
-<pre class="code-block" data-lang="rust"><code>&amp;'a i32        // 生命周期为 'a 的引用
-&amp;'a mut i32    // 可变引用</code></pre>
-<p><strong>类比理解</strong>：</p>
-<pre class="code-block" data-lang=""><code>fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str
-//            └─┬─┘   └─┬──┘   └─┬──┘        └─┬──┘
-//              │       │        │              │
-// 声明生命周期 ─┘       └────────┴──────────────┘——都是同一个生命周期 'a
-// &quot;返回的引用不能比 x、y 中较短的那个活得更久&quot;</code></pre>
-<p>用人话翻译一下：<code>longest</code> 函数说"返回值跟 x 和 y 绑定了"，编译器理解成"返回值最多活到 x 和 y 中<strong>先死那个</strong>的死亡时间"。这被称为"木桶原理"——你的返回值寿命取决于最短的那块木板。</p>
-<h3>结构体中的生命周期</h3>
-<pre class="code-block" data-lang="rust"><code>struct ImportantExcerpt&lt;'a&gt; {
-    part: &amp;'a str,       // 结构体持有引用时，必须标注生命周期
-}
-
-fn main() {
-    let novel = String::from(&quot;Call me Ishmael.&quot;);
-    let first_sentence = novel.split('.').next().unwrap();
-    let excerpt = ImportantExcerpt {
-        part: first_sentence,  // excerpt 不能比 novel 活得更久
-    };
+<p>问题在这：返回值可能是 <code>x</code> 也可能是 <code>y</code>，编译器不知道返回的引用该跟谁的寿命绑——万一调用者传个马上就死的 <code>y</code>，返回值拿着它出去用就悬垂了。编译器不敢赌，让你自己说清楚。两种典型写法：</p>
+<h4>情况一：返回值可能来自任意一个 → 共享同一个 <code>'a</code></h4>
+<pre class="code-block" data-lang="rust"><code>fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str {
+    //         x、y、返回值都标了同一个 'a
+    if x.len() &gt; y.len() { x } else { y }
 }</code></pre>
-<p>结构体如果持有引用字段，就相当于在自己身上绑了一根绳子——绳子的另一端拴着被引用的数据。你必须告诉编译器"我这个结构体不能比引用指向的数据活得更久"。</p>
-<h3>生命周期省略规则（Lifetime Elision）</h3>
-<p>大部分情况下你<strong>不需要写生命周期注解</strong>，编译器遵循三条规则自动推断：</p>
-<div class="table-wrap"><table><thead><tr><th>规则</th><th>说明</th></tr></thead><tbody><tr><td>1. 每个引用参数都有自己的生命周期</td><td><code>fn f(x: &i32)</code> → <code>fn f&lt;'a&gt;(x: &'a i32)</code></td></tr><tr><td>2. 只有一个输入生命周期，自动赋给所有输出</td><td><code>fn f(x: &i32) -> &i32</code> → <code>fn f&lt;'a&gt;(x: &'a i32) -&gt; &'a i32</code></td></tr><tr><td>3. 多个输入生命周期时，<code>&self</code>/<code>&mut self</code> 的生命周期赋给所有输出</td><td>这就是为什么大多数方法不需要显式标注</td></tr></tbody></table></div>
-<pre class="code-block" data-lang="rust"><code>// 不用写：规则 1 + 2 自动推断
-fn first_word(s: &amp;str) -&gt; &amp;str { ... }
-
-// 必须写：有两个输入，规则无法推断
-fn longest(x: &amp;str, y: &amp;str) -&gt; &amp;str { ... }
-// → 编译器报错，让你显式指定</code></pre>
-<p>换句话说，编译器替你推了绝大多数场景，只有在它"拿不准"的时候才会摊手让你自己来。大多数 Java 程序员刚看到 <code>'a</code> 会恐慌，但写久了你会发现：需要你自己写生命周期的时候，其实比你想象的要少得多。</p>
-<h3><code>'static</code> 生命周期</h3>
-<pre class="code-block" data-lang="rust"><code>// 'static 引用的存活时间是整个程序运行期间
-let s: &amp;'static str = &quot;I have a static lifetime.&quot;;</code></pre>
-<ul>
-<li><strong>字符串字面量</strong>默认是 <code>'static</code>——它们被硬编码在二进制里，从程序启动到结束一直都在。</li>
-<li>大多数"建议用 <code>'static</code>"的错误信息，实际上是提示你修复生命周期问题，而非让你加 <code>'static</code>。别把 <code>'static</code> 当成万能创可贴。</li>
-</ul>
-<hr>
-<h3>🚨 最长函数的生命周期理解</h3>
-<pre class="code-block" data-lang="rust"><code>fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str
-
-// 含义：
-// 对于某个生命周期 'a：
-//   - x 至少在 'a 期间有效
-//   - y 至少在 'a 期间有效
-//   - 返回值最多只能在 'a 期间被使用
-// 调用时 'a 的具体取值 = 调用者传入的两个引用生命周期的交集（较短的那个）</code></pre>
-<pre class="code-block" data-lang="rust"><code>let string1 = String::from(&quot;long&quot;);
-let result;
-{
-    let string2 = String::from(&quot;xyz&quot;);
-    result = longest(string1.as_str(), string2.as_str());
-    // 'a = string2 的生命周期（较短的那个）
+<p>三个都标<strong>同一个 <code>'a</code></strong>，意思是："返回值跟 x、y 绑同一个保质期，它的寿命<strong>不能超过 x 和 y 中先死那个</strong>"。这就是<strong>木桶原理</strong>——返回值寿命取决于最短的那块木板。因为返回值可能是 x 或 y，编译器只能按最保险的来：取两者较短。</p>
+<h4>情况二：返回值只来自某一个 → 用 <code>'a</code> <code>'b</code> 各管各的</h4>
+<p>如果你能保证返回值<strong>只跟其中一个参数绑</strong>，另一个只是来打酱油的，那就可以用两个不同的生命周期 <code>'a</code> 和 <code>'b</code>——各管各的，互不拖累：</p>
+<pre class="code-block" data-lang="rust"><code>// 返回值只来自 text，跟 prefix 没半毛钱关系
+fn first_word&lt;'a, 'b&gt;(text: &amp;'a str, _prefix: &amp;'b str) -&gt; &amp;'a str {
+    text  // 只返回 text（保质期 'a）；_prefix（保质期 'b）只是来看个热闹
+}</code></pre>
+<p><code>text</code> 标 <code>'a</code>、<code>_prefix</code> 标 <code>'b</code>——<strong>两个不同的保质期</strong>。返回值标 <code>'a</code>，意思是"返回值跟 text 同寿命，跟 prefix 无关"。调用者就算传个马上就死的 <code>prefix</code>，也不影响返回值（因为返回值压根不指望它）。</p>
+<p><strong>所以 <code>'a</code> <code>'b</code> 什么时候出现？</strong>当函数有<strong>多个寿命不同的引用参数</strong>，且返回值只跟其中某几个绑定时。把它们标成不同的 <code>'a</code>、<code>'b</code>，比硬塞进同一个 <code>'a</code> 更精确——调用者少受不必要的寿命约束。（反过来说，如果你硬要返回值可能来自任一参数，就只能像 <code>longest</code> 那样共用一个 <code>'a</code>，让编译器取最短。）</p>
+<h3>结构体里的生命周期</h3>
+<p>结构体要是持有引用字段，也得标——道理一样：结构体不能比它引用的数据活得久，不然字段就成悬垂引用了。</p>
+<pre class="code-block" data-lang="rust"><code>struct Excerpt&lt;'a&gt; {
+    part: &amp;'a str,   // 持有引用必须标 'a：本结构体不能比 part 指向的数据活得久
 }
-println!(&quot;{result}&quot;);  // ❌ string2 已释放！编译错误</code></pre>
-<p>最后一小段代码是整个生命周期概念的"灵魂案例"。你写 <code>longest</code> 时感觉一切正常，等到用的时候才发现：<code>result</code> 想活得比 <code>string2</code> 长，但编译器算出来 <code>'a</code> 取值是 <code>string2</code> 的短命周期——于是当场报错。这就是 Rust 在教你做人：<strong>引用的寿命不能超过数据本身的寿命</strong>。</p>
+
+let novel = String::from(&quot;Call me Ishmael.&quot;);
+let first = novel.split('.').next().unwrap();
+let ex = Excerpt { part: first };   // ex 不能比 novel 活得久（part 借的是 novel 的内容）</code></pre>
+<h3>好消息：大多数时候你根本不用写</h3>
+<p>看到 <code>'a</code> 别慌——<strong>绝大多数函数编译器能自动推断</strong>，不用你手写。它靠三条"省略规则"：</p>
+<ol>
+<li>每个引用参数先各自有自己的生命周期（<code>&amp;str</code> 自动当成 <code>&amp;'a str</code>）</li>
+<li>如果只有一个输入引用，它的生命周期自动赋给所有输出</li>
+<li>如果有 <code>&amp;self</code> / <code>&amp;mut self</code>，它的生命周期自动赋给所有输出（所以方法基本不用标）</li>
+</ol>
+<p>只有编译器"拿不准"的时候（比如 <code>longest</code> 这种多个引用参数、返回值又可能来自任一），才会摊手让你自己标。实际上，你真正需要手写生命周期的地方，比你想象的少得多。</p>
+<h3><code>'static</code>：活到海枯石烂</h3>
+<pre class="code-block" data-lang="rust"><code>let s: &amp;'static str = &quot;我被烤进了二进制，从程序启动到结束一直在&quot;;</code></pre>
+<p>字符串字面量默认是 <code>'static</code>——被烤进二进制，程序不死它不死。但<strong>别把 <code>'static</code> 当万能创可贴</strong>：很多报错提示你"用 <code>'static</code>"，其实是暗示你的引用寿命不够，该修的是引用关系，而不是无脑加 <code>'static</code> 糊弄过去。</p>
 <hr>
 <h2>🚀 第十章关键点</h2>
 <ol>
