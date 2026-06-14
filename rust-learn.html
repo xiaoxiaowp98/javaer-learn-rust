@@ -474,8 +474,6 @@ while (true) {
 <p><code>loop</code> 就是 Rust 的 <code>while (true)</code>，但它不是简单的语法糖——<code>loop</code> 可以直接通过 <code>break</code> 带一个值出来（第三章会演示）。这是因为 <code>loop</code> 表达的是"必定无限循环"的语义，编译器确信它只能通过 <code>break</code> 退出，所以允许 <code>break</code> 带返回值。而 <code>while</code> 即使条件是 <code>true</code>，编译器也把它当作条件循环处理，不提供这个语法支持。</p>
 <p><strong>vs Java</strong>：<code>while (true) { ... break; }</code></p>
 <hr>
-<h2>📌 Java 开发者速查</h2>
-<div class="table-wrap"><table><thead><tr><th>概念</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>随机数</td><td><code>rand::thread_rng().gen_range(1..=100)</code></td><td><code>ThreadLocalRandom.current().nextInt(1, 101)</code></td></tr><tr><td>读取输入</td><td><code>io::stdin().read_line(&mut s)</code></td><td><code>new Scanner(System.in).nextLine()</code></td></tr><tr><td>字符串解析</td><td><code>s.trim().parse::&lt;u32&gt;()</code></td><td><code>Integer.parseInt(s.trim())</code></td></tr><tr><td>依赖管理</td><td><code>Cargo.toml</code> + <code>use</code></td><td><code>pom.xml</code> + <code>import</code></td></tr><tr><td>无限循环</td><td><code>loop</code></td><td><code>while (true)</code></td></tr><tr><td>提前退出</td><td><code>break</code></td><td><code>break</code></td></tr><tr><td>模式匹配</td><td><code>match</code></td><td><code>switch</code>（Java 17+）</td></tr></tbody></table></div>
 <p>看到这儿，你可能觉得 Rust 写起业务代码来跟 Java 也没差太多？你猜对了——核心流程控制（输入 → 处理 → 输出）两者是很像的。真正的分水岭在第四章，那个叫"所有权"的概念会彻底刷新你对内存管理的认知。在这之前，先把第三章的基础语法啃扎实了。</p><hr>
 <h2>📌 下一章预告：核心语法——用 Java 当参照物</h2>
 <p>第一个项目跑通了，有了手感。下一章系统性地过一遍 Rust 的基础语法——变量、类型、函数、控制流。核心思路是"用 Java 当参照物，重点讲那些<strong>看起来差不多但用起来差很多</strong>的地方"。学完这章，你至少能看懂 80% 的 Rust 代码了。</p>
@@ -719,8 +717,6 @@ for number in 1..=4 {      // 1, 2, 3, 4
 <p>💡 Rust <strong>没有</strong> C 风格的 <code>for (init; condition; step)</code>。所有循环都用 <code>for ... in ...</code> 或 <code>loop</code> / <code>while</code>。如果你就是想要索引，可以配合 <code>.enumerate()</code> 或者直接用 <code>0..len</code> 范围。习惯就好——没了三件套，off-by-one 的错误也能少一半。</p>
 </blockquote>
 <hr>
-<h2>核心记忆点（面试/笔试速查）</h2>
-<div class="table-wrap"><table><thead><tr><th>概念</th><th>Rust 的做法</th><th>Java 的不同</th></tr></thead><tbody><tr><td>变量默认</td><td><strong>不可变</strong> (<code>let</code>)</td><td>可变 (默认)</td></tr><tr><td>可变变量</td><td><code>let mut x</code></td><td>不用加关键字</td></tr><tr><td>常量</td><td><code>const NAME: Type = val;</code></td><td><code>static final</code></td></tr><tr><td>遮蔽</td><td>同名 <code>let</code> 重新绑定、可改类型</td><td>❌ 不支持</td></tr><tr><td>表达式返回值</td><td>无分号即返回值</td><td>一切靠 <code>return</code></td></tr><tr><td><code>if</code> 类型</td><td><strong>表达式</strong>，可赋值给变量</td><td>语句</td></tr><tr><td><code>loop</code></td><td>内置无限循环，可 <code>break val</code></td><td>用 <code>while(true)</code> + 外部变量</td></tr><tr><td><code>for</code> 范围</td><td><code>0..n</code> / <code>0..=n</code></td><td><code>for(int i=0; i&lt;n; i++)</code></td></tr><tr><td>元组</td><td>原生支持 <code>(i32, f64, u8)</code></td><td>需第三方库或 Record</td></tr><tr><td>数组越界</td><td><code>panic!</code> (崩溃退出)</td><td>抛异常</td></tr><tr><td>字符大小</td><td>4 字节 Unicode</td><td>2 字节 UTF-16</td></tr></tbody></table></div>
 <hr>
 <h2>📌 下一章预告：所有权（Ownership）—— 真正的分水岭</h2>
 <p>第三章只是热身。<strong>第四章的所有权系统</strong>才是 Rust 相对于 Java 真正的<strong>颠覆性概念</strong>。</p>
@@ -1008,8 +1004,6 @@ let word = first_word(&amp;my_literal[..]); // 字面量的切片</code></pre>
 let slice = &amp;a[1..3];               // &amp;[i32] 类型——数组切片
 assert_eq!(slice, &amp;[2, 3]);         // [2, 3]</code></pre>
 <hr>
-<h2>📌 Java 开发者·所有权速查表</h2>
-<div class="table-wrap"><table><thead><tr><th>Java 思维</th><th>Rust 对应</th><th>关键差异</th></tr></thead><tbody><tr><td>所有对象在堆上，GC 管理</td><td><strong>所有权</strong>管理堆内存</td><td>编译时检查，零运行时开销</td></tr><tr><td><code>String s2 = s1;</code> 两个引用指向同一对象</td><td><code>let s2 = s1;</code> <strong>move</strong> 语义，s1 失效</td><td>默认是"搬家"不是"共享"</td></tr><tr><td>赋值就是复制引用（浅拷贝）</td><td>栈上数据自动 <code>Copy</code>，堆上数据 <strong>move</strong></td><td>必须显式 <code>.clone()</code> 做深拷贝</td></tr><tr><td>方法参数传引用</td><td><code>&T</code> 借用（不可变），<code>&mut T</code> 可变借用</td><td>引用不拥有所有权——只借不拿</td></tr><tr><td>任意多个引用可以同时读/写</td><td><strong>一个可变引用</strong>或<strong>多个不可变引用</strong></td><td>编译时防止数据竞争</td></tr><tr><td>对象引用可能为 null</td><td>引用<strong>永远有效</strong>（编译器保证）</td><td>没有 null 引用，没有悬垂指针</td></tr><tr><td>数组/字符串取子集用 <code>.substring()</code></td><td>切片 <code>&s[0..5]</code></td><td>切片也是引用，受借用规则保护</td></tr></tbody></table></div>
 <hr>
 <h2>🚨 第四章是 Rust 的分水岭——你能不能跨过去就看你有没有搞定这一章</h2>
 <blockquote>
@@ -1291,8 +1285,6 @@ struct User {
 <p>生命周期在第 10 章才讲。现在记住：<strong>结构体里优先用 <code>String</code>/<code>Vec&lt;T&gt;</code> 等拥有所有权的类型，别急着上引用</strong>。等学会了生命周期标注再玩花活，不然编译器会让你怀疑人生。</p>
 </blockquote>
 <hr>
-<h2>📌 Java 开发者速查表</h2>
-<div class="table-wrap"><table><thead><tr><th>概念</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>定义数据结构</td><td><code>struct</code></td><td><code>class</code> / <code>record</code></td></tr><tr><td>创建实例</td><td><code>let x = Type { field: val };</code></td><td><code>new Type(val)</code></td></tr><tr><td>方法定义</td><td><code>impl Type { fn method(&self) {} }</code></td><td>写在 class 内部</td></tr><tr><td>当前实例</td><td><code>self</code>（必须显式传参——不能省略）</td><td><code>this</code>（隐式——可省）</td></tr><tr><td>"静态"方法</td><td>关联函数（不用 <code>&self</code>）</td><td><code>static</code> 方法</td></tr><tr><td>调用静态方法</td><td><code>Type::func()</code></td><td><code>Type.func()</code></td></tr><tr><td>自动 toString</td><td><code>#[derive(Debug)]</code></td><td><code>@ToString</code> / 手写</td></tr><tr><td>字段简写</td><td><code>email,</code> 代替 <code>email: email</code></td><td>❌</td></tr><tr><td>拷贝+改字段</td><td><code>..other</code> 语法（注意 move 坑）</td><td>❌（手写 clone）</td></tr><tr><td>元组包装</td><td>元组结构体 <code>struct Color(i32,i32,i32)</code></td><td>❌</td></tr><tr><td>空标记</td><td>类单元结构体 <code>struct Marker;</code></td><td>标记接口 / 空注解</td></tr><tr><td>方法/字段分离</td><td>定义和数据分离——各过各的</td><td>在一起——一家人</td></tr><tr><td>多个 impl</td><td>✅ 可以有多个 <code>impl</code> 块——拆开管</td><td>只能一个 class 定义</td></tr></tbody></table></div>
 <hr>
 <h2>🚀 第五章关键要点</h2>
 <ol>
@@ -1548,8 +1540,6 @@ println!("{}", x);  // ✅ x 还在——不用把后续逻辑缩进一层</code
 //    }</code></pre>
 <p>注意 ③ 里的 <code>return</code> 是函数控制流关键字，不是 <code>let...else</code> 特有的——你也可以在 <code>match</code> 的分支里写 <code>_ => return</code>，效果一样。<code>let...else</code> 只是把这个模式封装成了一个更简洁的语法。</p>
 <hr>
-<h2>📌 Java 开发者速查表</h2>
-<div class="table-wrap"><table><thead><tr><th>概念</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>枚举定义</td><td><code>enum E { A, B }</code></td><td><code>enum E { A, B }</code></td></tr><tr><td>访问变体</td><td><code>E::A</code>（<code>::</code>——双冒号）</td><td><code>E.A</code>（<code>.</code>——单点）</td></tr><tr><td>变体携带数据</td><td>✅ <code>V4(u8,u8,u8,u8)</code>——每个变体可以带不同数据</td><td>❌ 需要额外字段或子类来绕</td></tr><tr><td>不同类型的数据</td><td>✅ 每个变体可完全不同——自由度极高</td><td>❌ 统一结构，没法不同</td></tr><tr><td>枚举方法</td><td><code>impl E { fn m(&self){} }</code></td><td>定义在 enum 体内</td></tr><tr><td>"null" 安全</td><td><code>Option&lt;T&gt;</code>——语言内置，编译器强制处理</td><td><code>Optional&lt;T&gt;</code>——不是语言内置，NPE 依然存在</td></tr><tr><td>强制处理 null</td><td>✅ 编译器检查，不处理就编译不过</td><td>❌ NPE 是运行时异常，编译器睁一只眼闭一只眼</td></tr><tr><td>分支匹配</td><td><code>match</code>（穷尽性检查——不全部覆盖就报错）</td><td><code>switch</code> 语句不强制覆盖；但 Java 14+ <code>switch 表达式</code>对 enum 有穷尽性检查</td></tr><tr><td>提取匹配中的数据</td><td><code>Some(i)</code> 自动绑定——值直接拆出来用</td><td><code>case String s</code>（Java 17+ 才支持）</td></tr><tr><td>单分支简写</td><td><code>if let</code>——只关心一种情况时的语法糖</td><td>switch 单分支</td></tr><tr><td>提前返回模式</td><td><code>let...else</code>——不匹配就走人</td><td>guard + return</td></tr><tr><td>通配</td><td><code>_</code> 或 <code>other</code></td><td><code>default</code></td></tr></tbody></table></div>
 <h3>核心差异一句话</h3>
 <blockquote>
 <p><strong>Rust 的枚举是一个可以包含不同类型的"带标签的联合体"</strong>（tagged union / ADT——代数数据类型）；</p>
@@ -1935,8 +1925,6 @@ use std::io::{self, Write};  // 拆开看就是两条：
 <pre class="code-block" data-lang="rust"><code>use std::collections::*;  // 引入所有公开项——&quot;全都要&quot;</code></pre>
 <p>⚠️ 类似 Java 的 <code>import java.util.*</code>，但社区普遍认为 glob 只适合少数场景（比如测试里快速导入全部东西，或者 prelude 模式），生产代码谨慎使用——不然读者不知道哪个名字从哪来的。</p>
 <hr>
-<h2>📌 模块系统速查</h2>
-<div class="table-wrap"><table><thead><tr><th>概念</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>导入路径</td><td><code>use crate::mod::fn;</code></td><td><code>import package.Class;</code></td></tr><tr><td>路径分隔符</td><td><code>::</code></td><td><code>.</code></td></tr><tr><td>公开</td><td><code>pub</code></td><td><code>public</code></td></tr><tr><td>默认可见性</td><td><strong>私有</strong></td><td>包级可见（package-private）</td></tr><tr><td><code>pub</code> 细分</td><td><code>pub(crate)</code> / <code>pub(super)</code> / <code>pub(in path)</code></td><td>无细分</td></tr><tr><td>模块声明</td><td><code>mod xxx { }</code> 或 <code>mod xxx;</code></td><td><code>package xxx.yyy;</code></td></tr><tr><td>文件匹配</td><td><code>mod</code> 声明后按固定规则查找同名文件/目录</td><td>强制：包名通常对应目录路径</td></tr><tr><td>重导出</td><td><code>pub use</code></td><td>❌</td></tr><tr><td>别名</td><td><code>use A as B</code></td><td><code>import A as B</code>（不支持）</td></tr><tr><td>嵌套导入</td><td><code>use {A, B}</code></td><td>Java 不支持</td></tr><tr><td>外部依赖</td><td><code>Cargo.toml</code> + <code>use</code></td><td>Maven/Gradle + <code>import</code></td></tr></tbody></table></div>
 <hr>
 <h2>🚀 第七章关键点</h2>
 <p><strong>一句话总结：对外看 <code>lib.rs</code>，对内靠 <code>mod</code> + <code>pub</code>。</strong></p>
@@ -2203,10 +2191,6 @@ for (String word : text.split(&quot; &quot;)) {
 }</code></pre>
 <p><code>entry().or_insert()</code> 返回 <code>&mut V</code>，可以直接修改，比 Java 的 <code>merge</code> 更直观——你拿到的是一个可变引用，直接 <code>*count += 1</code> 就行，不用传 lambda 表达式。</p>
 <hr>
-<h2>📌 Java 开发者速查表</h2>
-<div class="table-wrap"><table><thead><tr><th>集合</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>动态数组</td><td><code>Vec&lt;T&gt;</code></td><td><code>ArrayList&lt;T&gt;</code></td></tr><tr><td>创建</td><td><code>vec![1,2,3]</code></td><td><code>Arrays.asList(1,2,3)</code></td></tr><tr><td>索引访问</td><td><code>v[0]</code>（越界 <strong>panic</strong>）</td><td><code>v.get(0)</code>（越界抛异常）</td></tr><tr><td>安全访问</td><td><code>v.get(0)</code> → <code>Option</code></td><td><code>v.get(0)</code> 或 try-catch</td></tr><tr><td>添加</td><td><code>v.push(x)</code></td><td><code>v.add(x)</code></td></tr><tr><td>删除末尾</td><td><code>v.pop()</code></td><td><code>v.remove(v.size()-1)</code></td></tr><tr><td>遍历</td><td><code>for i in &v {}</code></td><td><code>for (int i : v) {}</code></td></tr><tr><td>修改元素</td><td><code>*i += 1</code></td><td>需要索引、<code>ListIterator#set</code> 或 <code>replaceAll</code>，增强 for 中给循环变量赋值不会改集合</td></tr></tbody></table></div>
-<div class="table-wrap"><table><thead><tr><th>字符串</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>索引</td><td>❌ 不支持 <code>s[i]</code></td><td>✅ <code>s.charAt(i)</code></td></tr><tr><td>字节索引</td><td>✅ <code>s.as_bytes()[i]</code></td><td>❌</td></tr><tr><td>编码</td><td>UTF-8（变长）</td><td>UTF-16 code unit（每个 <code>char</code> 2 字节，完整字符可能需要一对 surrogate）</td></tr><tr><td>拼接</td><td><code>s1 + &s2</code>（消费 s1）</td><td><code>s1 + s2</code>（不消费）</td></tr><tr><td>安全拼接</td><td><code>format!(...)</code></td><td><code>String.format()</code></td></tr><tr><td>遍历字符</td><td><code>s.chars()</code></td><td><code>s.chars()</code>（但 Java 的 char 是 UTF-16，不是完整 Unicode）</td></tr><tr><td>遍历字节</td><td><code>s.bytes()</code></td><td><code>s.getBytes()</code></td></tr></tbody></table></div>
-<div class="table-wrap"><table><thead><tr><th>Map</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>创建</td><td><code>HashMap::new()</code></td><td><code>new HashMap&lt;&gt;()</code></td></tr><tr><td>插入</td><td><code>map.insert(k, v)</code></td><td><code>map.put(k, v)</code></td></tr><tr><td>读取</td><td><code>map.get(k)</code> → <code>Option</code></td><td><code>map.get(k)</code> → 可能 null</td></tr><tr><td>安全读取</td><td><code>.get(k).copied().unwrap_or(0)</code></td><td><code>getOrDefault(k, 0)</code></td></tr><tr><td>条件插入</td><td><code>entry(k).or_insert(v)</code></td><td><code>putIfAbsent(k, v)</code></td></tr><tr><td>更新</td><td><code>*entry(k).or_insert(0) += 1</code></td><td><code>merge(k, 1, Integer::sum)</code></td></tr><tr><td>遍历</td><td><code>for (k, v) in &map</code></td><td><code>for (Map.Entry e : map)</code></td></tr></tbody></table></div>
 <h3>🔑 核心差异一句话</h3>
 <blockquote>
 <p>Rust 的所有集合都受<strong>所有权和借用规则</strong>约束 —— 你不能在持有引用的同时修改集合，编译器在编译时阻止数据竞争和悬垂指针。Java 的集合在运行时才可能抛出 <code>ConcurrentModificationException</code>，甚至单线程下也可能错过。</p>
@@ -2443,113 +2427,98 @@ let f = File::open(&quot;hello.txt&quot;).unwrap();
 
 // 2. 你比编译器知道得更多——硬编码的值绝对不会错
 let ip: IpAddr = &quot;127.0.0.1&quot;.parse().expect(&quot;硬编码的 IP 应该是有效的&quot;);
+// 补一句：parse() 是泛型的，转成啥全看左边的 : IpAddr 标注——它自己可不会"猜"（细节第 10 章泛型讲）
+// 也等价于用 turbofish（涡轮鱼）把类型直接塞进调用里：
+// let ip = &quot;127.0.0.1&quot;.parse::&lt;IpAddr&gt;().expect(&quot;...&quot;);
 
 // 3. 有害状态（bad state）——继续执行会导致安全问题或数据损坏
 if value &lt; 1 || value &gt; 100 {
     panic!(&quot;值必须在 1~100 之间，收到了 {value}，这是不可接受的&quot;);
 }</code></pre>
 <h3>什么时候用 <code>Result</code></h3>
+<p>跟 panic 是同一枚硬币的两面——<strong>调用者有可能合理地处理这个错误</strong>，就用 Result 把决定权交给他。典型场景：</p>
 <ul>
-<li><strong>错误是预期会发生的</strong>：文件不存在、网络超时、用户输入无效——这些都是正常业务流程的一部分</li>
-<li><strong>调用者可能需要恢复</strong>：把决定权交给调用者，而不是自己拍板炸掉</li>
+<li><strong>文件 / 网络 / IO</strong>：文件不存在、网络超时、磁盘满——这些是外部环境随时可能出的状况，调用者可能想重试、想换个文件、想给用户弹个友好提示</li>
+<li><strong>用户输入 / 配置解析</strong>：填错了格式、配置少了个字段——用户会犯错是常态，程序该提示他重填，而不是直接崩</li>
+<li><strong>查找 / 搜索</strong>：HashMap 里没这个 key、数据库查不到记录——"没找到"是正常结果，不是 bug</li>
 </ul>
-<p>一句话：<strong>不要把 panic 当异常用，不要把 Result 返回值的错误变体静默丢掉</strong>。</p>
-<h3>⭐ 用类型系统消除错误 —— 创建自定义类型</h3>
-<p>这是 Rust 最优雅的模式之一：如果你用类型系统把"非法状态"变得不可表示，那校验代码都不用写了。</p>
-<pre class="code-block" data-lang="rust"><code>pub struct Guess {
-    value: i32,
+<p>看代码就懂了——库函数<strong>返回 Result</strong>，把"怎么办"的决定权甩给调用者：</p>
+<pre class="code-block" data-lang="rust"><code>// 库函数：读用户名，失败就把错误返回给调用者，绝不自己 panic
+fn read_username() -&gt; Result&lt;String, io::Error&gt; {
+    let name = std::fs::read_to_string(&quot;username.txt&quot;)?;   // ? 失败就把 Err 往上传
+    Ok(name)
 }
 
-impl Guess {
-    pub fn new(value: i32) -&gt; Guess {
-        if value &lt; 1 || value &gt; 100 {
-            panic!(&quot;Guess value must be between 1 and 100, got {value}.&quot;);
-        }
-        Guess { value }
-    }
-
-    pub fn value(&amp;self) -&gt; i32 {
-        self.value
-    }
-}
-
-// 函数签名直接用 Guess 类型，无需再校验——拿到 Guess 就说明已经校验过了
-fn print_guess(g: &amp;Guess) {
-    println!(&quot;{}&quot;, g.value());  // 一定在 1~100 之间，编译器保证不了但类型保证了
+// 调用者拿到 Result，自己拍板：重试？用默认值？报错给用户？
+match read_username() {
+    Ok(name) =&gt; println!(&quot;欢迎，{name}&quot;),
+    Err(_)   =&gt; println!(&quot;没找到用户名，先用默认值 guest 吧&quot;),   // 程序继续跑，不崩
 }</code></pre>
-<p><strong>vs Java</strong>：</p>
-<pre class="code-block" data-lang="java"><code>// Java：运行时才能检查——签名字段看不出约束
-public void printGuess(int value) {
-    if (value &lt; 1 || value &gt; 100) {
-        throw new IllegalArgumentException(&quot;...&quot;);
-    }
-    System.out.println(value);
-}
-// 调用者可能忘了检查！你只能在文档里写&quot;value must be between 1 and 100&quot;
-
-// 或者用包装类——Java 16+ Record 可以实现类似效果
-public record Guess(int value) {
-    public Guess {
-        if (value &lt; 1 || value &gt; 100)
-            throw new IllegalArgumentException(&quot;...&quot;);
-    }
-}</code></pre>
-<p>Rust 的做法让"已验证的值"和"未验证的裸值"在类型层面就是两种东西。<code>print_guess</code> 接收 <code>&Guess</code> 而不是 <code>i32</code>，这意味着调用者<strong>必须</strong>通过 <code>Guess::new()</code> 构造参数——校验被强制在入口处完成。</p>
+<p>对比一下：回头看 panic 那节写的 <code>File::open(&quot;hello.txt&quot;).unwrap()</code>——那是示例代码图省事；真实代码里 <code>File::open</code> 返回的就是 <code>Result</code>，你该用 <code>?</code> 把错误往上传播（或让函数返回 <code>Result</code> 交给调用者），而不是 <code>unwrap()</code> 一炸了之。</p>
+<p>一句话：<strong>不要把 panic 当异常用，也不要把 Result 的错误变体静默丢掉</strong>（拿到 Result 不处理、直接忽略，等于把可能出错的信号扔了）。</p>
 <hr>
-<h2>9.4 自定义错误类型（最佳实践）</h2>
-<p>生产代码里你不会一直用 <code>Box&lt;dyn Error&gt;</code>。自定义错误类型让你能区分各种失败原因，调用方也能针对不同错误做不同处理。好消息是重复代码可以用 <code>thiserror</code> crate 一键生成，但手工实现也是必学功课。</p>
+<h2>9.4 自定义错误类型（先混个脸熟，细节后面讲）</h2>
+<p>前面用 <code>Box&lt;dyn Error&gt;</code> 当"啥错误都能装"的万能口袋，方便但有个毛病：<strong>调用方分不清到底是哪种错误</strong>——文件读不了、数字解析失败、业务逻辑不对，全糊在一个 <code>Box</code> 里。自定义错误类型就是把你可能遇到的所有错误列成一个 <code>enum</code>，每种失败一个变体，调用方就能用 <code>match</code> 针对不同错误做不同处理。</p>
+<p>下面这份代码<strong>先混个脸熟就行</strong>——里面用到的 trait（<code>Error</code>/<code>Display</code>/<code>From</code>）、生命周期（<code>'static</code>）、trait 对象（<code>dyn Error</code>）要到第 10/18 章才正式讲。现在看不懂具体写法太正常，重点抓住每块在干嘛（看注释 ①~⑤）：</p>
 <pre class="code-block" data-lang="rust"><code>use std::fmt;
 use std::error::Error;
 use std::io;
 
-// 1. 定义错误枚举——把你可能遇到的所有错误类型列出来
+// ① 自定义错误 = 一个 enum，把所有失败原因列出来
 #[derive(Debug)]
 pub enum AppError {
-    Io(io::Error),
-    Parse(std::num::ParseIntError),
-    NotFound(String),
+    Io(io::Error),                  // 文件读写失败
+    Parse(std::num::ParseIntError), // 字符串解析成数字失败
+    NotFound(String),               // 业务错误：内容不对
 }
 
-// 2. 实现 Display（给人看的错误信息）
+// ② 实现 Display：给"人"看的错误描述（println! 打印时显示这个）
 impl fmt::Display for AppError {
     fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {
         match self {
-            AppError::Io(e) =&gt; write!(f, &quot;IO 错误: {e}&quot;),
-            AppError::Parse(e) =&gt; write!(f, &quot;解析错误: {e}&quot;),
-            AppError::NotFound(name) =&gt; write!(f, &quot;未找到: {name}&quot;),
+            AppError::Io(e)       =&gt; write!(f, &quot;IO 错误: {e}&quot;),
+            AppError::Parse(e)    =&gt; write!(f, &quot;解析错误: {e}&quot;),
+            AppError::NotFound(n) =&gt; write!(f, &quot;未找到: {n}&quot;),
         }
     }
 }
 
-// 3. 实现 Error trait（让调用方可以用 source() 追溯错误链）
+// ③ 实现 Error：让 AppError 算"合格的错误"，还能用 source() 追溯错误链
 impl Error for AppError {
     fn source(&amp;self) -&gt; Option&lt;&amp;(dyn Error + 'static)&gt; {
         match self {
-            AppError::Io(e) =&gt; Some(e),
-            AppError::Parse(e) =&gt; Some(e),
-            AppError::NotFound(_) =&gt; None,
+            AppError::Io(e)       =&gt; Some(e),   // e 自动是引用，转成 &dyn Error
+            AppError::Parse(e)    =&gt; Some(e),
+            AppError::NotFound(_) =&gt; None,      // 业务错误没有底层根因
         }
     }
 }
 
-// 4. 实现 From 方便用 ? 自动转换——这种样板代码 thiserror 可以替你生成
+// ④ 实现 From：告诉 ? 遇到 io::Error / ParseIntError 时怎么包成 AppError
 impl From&lt;io::Error&gt; for AppError {
     fn from(e: io::Error) -&gt; Self { AppError::Io(e) }
 }
-
 impl From&lt;std::num::ParseIntError&gt; for AppError {
     fn from(e: std::num::ParseIntError) -&gt; Self { AppError::Parse(e) }
 }
 
-// 使用 —— ? 自动将 io::Error 和 ParseIntError 转为 AppError
+// ⑤ 用起来——? 自动把 io::Error / ParseIntError 转成 AppError
 fn read_config() -&gt; Result&lt;i32, AppError&gt; {
     let content = std::fs::read_to_string(&quot;config.txt&quot;)?;  // ? → From 自动转
-    let value: i32 = content.trim().parse()?;                // ? → From 自动转
+    let value: i32 = content.trim().parse()?;               // ? → From 自动转
     Ok(value)
 }</code></pre>
+<p>调用方现在能<strong>精确区分</strong>每种错误了，不再是个黑盒：</p>
+<pre class="code-block" data-lang="rust"><code>match read_config() {
+    Ok(v)                      =&gt; { /* 正常用 v */ }
+    Err(AppError::Io(_))       =&gt; println!(&quot;文件问题，重试一下&quot;),
+    Err(AppError::Parse(_))    =&gt; println!(&quot;格式不对，提示用户重填&quot;),
+    Err(AppError::NotFound(n)) =&gt; println!(&quot;业务错误：{n}&quot;),
+}</code></pre>
 <blockquote>
-<p>💡 生产代码推荐用 <code>thiserror</code> crate 自动生成上述样板代码——一个 derive 宏就搞定以上几十行。</p>
+<p>⚠️ 这里出现的 <code>impl ... for ...</code>（trait 实现）、<code>From</code>、<code>'static</code>、<code>dyn Error</code> 这些写法，要到<strong>第 10 章</strong>（泛型与 Trait）和<strong>第 18 章</strong>才正式讲。现在看不懂太正常，你只要记住每块的作用（注释 ①~⑤），等学完 trait 回头看，就豁然开朗了。</p>
 </blockquote>
+<p>生产代码里手写这些样板很烦，社区有个 <code>thiserror</code> crate，加个 <code>#[derive(Error)]</code> 就自动生成 <code>Display</code> + <code>Error</code> + <code>From</code> 那一堆。等你开始写真实项目再装它，现在先理解思路。</p>
 <h3>没有 finally？用 Drop 代替</h3>
 <p>Rust 没有 <code>finally</code> 块，但 <code>Drop</code> trait 提供了等价且更可靠的"确定性清理"：</p>
 <pre class="code-block" data-lang="rust"><code>struct TempFile { path: String }
@@ -2568,8 +2537,6 @@ fn process() -&gt; Result&lt;(), std::io::Error&gt; {
 }</code></pre>
 <p>这比 <code>finally</code> 更安全：Java 里你可能会忘了在 <code>finally</code> 里关闭资源（虽然 try-with-resources 解决了大部分），Rust 的 <code>Drop</code> 是编译期就排好的清理流程，在正常流程中不会忘。而且 <code>Drop</code> 是"值离开作用域自动执行"，不需要特殊语法。不过也有例外：<code>std::process::exit()</code> 或 <code>std::mem::forget()</code> 会跳过 Drop，双重 panic 时进程直接终止也会跳过剩余的 Drop。</p>
 <hr>
-<h2>📌 Java 开发者速查表</h2>
-<div class="table-wrap"><table><thead><tr><th>概念</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>不可恢复错误</td><td><code>panic!</code></td><td><code>RuntimeException</code>（可捕获——但通常不该捕获）</td></tr><tr><td>可恢复错误</td><td><code>Result&lt;T, E&gt;</code></td><td>checked exception / return null</td></tr><tr><td>错误传播</td><td><code>?</code> 运算符</td><td><code>throws</code> 关键字</td></tr><tr><td>失败即 panic</td><td><code>.unwrap()</code> / <code>.expect()</code></td><td><code>Optional.get()</code></td></tr><tr><td>自定义错误信息</td><td><code>.expect("msg")</code></td><td>自定义异常消息</td></tr><tr><td>匹配错误类型</td><td><code>match error.kind()</code></td><td><code>catch (IOException e)</code></td></tr><tr><td>作用域结束自动清理</td><td><code>Drop</code>（unwinding 时会执行；<code>panic = "abort"</code> 时不会展开栈）</td><td><code>finally</code> 块 / try-with-resources</td></tr><tr><td>多个错误类型</td><td><code>Box&lt;dyn Error&gt;</code></td><td>多 <code>catch</code> 块</td></tr><tr><td>创建自定义验证类型</td><td><code>struct Guess { value }</code></td><td><code>class Guess</code> + 校验构造器</td></tr></tbody></table></div>
 <h3>核心差异</h3>
 <div class="table-wrap"><table><thead><tr><th>Java</th><th>Rust</th></tr></thead><tbody><tr><td>异常是<strong>控制流</strong>的一种，调用者可能忘记处理运行时异常</td><td><code>Result</code> 是<strong>返回值</strong>；使用成功值前必须处理或显式选择传播 / unwrap</td></tr><tr><td>checked exception 必须 catch 或声明 <code>throws</code></td><td><code>?</code> 只能在返回 <code>Result</code> / <code>Option</code> 等兼容类型的函数中使用</td></tr><tr><td>NPE 是运行时坑——十亿美金错误</td><td><code>Option&lt;T&gt;</code> 强迫你处理空值——编译时就躲开了</td></tr><tr><td><code>try-catch-finally</code> 是专用语法</td><td><code>match</code> / <code>?</code> / <code>unwrap</code> 是通用表达式——不特殊</td></tr></tbody></table></div>
 <h3>一句话</h3>
@@ -2805,8 +2772,6 @@ let s: &amp;'static str = &quot;I have a static lifetime.&quot;;</code></pre>
 <li>大多数"建议用 <code>'static</code>"的错误信息，实际上是提示你修复生命周期问题，而非让你加 <code>'static</code>。别把 <code>'static</code> 当成万能创可贴。</li>
 </ul>
 <hr>
-<h2>📌 Java 开发者速查表</h2>
-<div class="table-wrap"><table><thead><tr><th>概念</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>泛型</td><td><code>&lt;T&gt;</code></td><td><code>&lt;T&gt;</code></td></tr><tr><td>泛型实现</td><td><strong>单态化</strong>（编译期展开）</td><td><strong>类型擦除</strong></td></tr><tr><td>运行时开销</td><td>零</td><td>有（装箱、类型转换）</td></tr><tr><td>泛型边界</td><td><code>T: Trait</code></td><td><code>T extends Interface</code></td></tr><tr><td>多边界</td><td><code>T: Trait1 + Trait2</code></td><td><code>T extends I1 & I2</code></td></tr><tr><td>接口/规范</td><td><code>trait</code></td><td><code>interface</code></td></tr><tr><td>实现</td><td><code>impl Trait for Type</code></td><td><code>class Type implements Trait</code></td></tr><tr><td>默认方法</td><td>trait 中提供默认实现</td><td><code>default</code> 方法</td></tr><tr><td>作为参数</td><td><code>&impl Trait</code> / <code>&lt;T: Trait&gt;</code></td><td><code>? extends Trait</code></td></tr><tr><td>返回类型</td><td><code>-> impl Trait</code></td><td>普通泛型返回</td></tr><tr><td>owned => 引用无问题</td><td>✅ 编译器保障</td><td>✅ GC 保障</td></tr><tr><td><strong>引用的有效性</strong></td><td><strong>生命周期 <code>'a</code></strong>（编译时）</td><td>运行时 GC 管理</td></tr><tr><td>无法在编译时解决的问题</td><td>悬垂引用 ❌</td><td>NPE（运行时）</td></tr></tbody></table></div>
 <h3>🚨 最长函数的生命周期理解</h3>
 <pre class="code-block" data-lang="rust"><code>fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str
 
@@ -3719,8 +3684,6 @@ mvn deploy              # 发布到 Maven Central</code></pre>
 <p>💡 Rust 的工具链<strong>开箱即用</strong>，无需像 Maven 一样安装插件。<code>cargo test</code>、<code>cargo bench</code>、<code>cargo doc</code> 是 Cargo 内置命令；<code>cargo fmt</code>（rustfmt）和 <code>cargo clippy</code> 是 Rust 官方组件，通过 <code>rustup</code> 安装，通常默认就有。你用 Maven 需要装 Checkstyle、PMD、SpotBugs、spotless、maven-javadoc-plugin……在 Rust 这边，一条 <code>cargo</code> 命令全包了。</p>
 </blockquote>
 <hr>
-<h2>📌 Java 开发者速查表</h2>
-<div class="table-wrap"><table><thead><tr><th>概念</th><th>Rust</th><th>Java (Maven)</th></tr></thead><tbody><tr><td>项目配置</td><td><code>Cargo.toml</code></td><td><code>pom.xml</code></td></tr><tr><td>依赖声明</td><td><code>[dependencies]</code></td><td><code>&lt;dependencies&gt;</code></td></tr><tr><td>测试依赖</td><td><code>[dev-dependencies]</code></td><td><code>&lt;scope&gt;test&lt;/scope&gt;</code></td></tr><tr><td>可选依赖</td><td><code>optional = true</code> + <code>[features]</code></td><td><code>&lt;optional&gt;true&lt;/optional&gt;</code></td></tr><tr><td>版本锁定</td><td><code>Cargo.lock</code></td><td>无（靠 Maven Enforcer）</td></tr><tr><td>多模块</td><td><code>[workspace]</code></td><td><code>&lt;modules&gt;</code> + parent POM</td></tr><tr><td>文档生成</td><td><code>cargo doc</code>（含测试）</td><td><code>mvn javadoc:javadoc</code></td></tr><tr><td>代码格式化</td><td><code>cargo fmt</code>（官方组件）</td><td>无（靠 IDE 插件）</td></tr><tr><td>代码检查</td><td><code>cargo clippy</code>（官方组件）</td><td>Checkstyle / SpotBugs</td></tr><tr><td>发布</td><td><code>cargo publish</code> → crates.io</td><td><code>mvn deploy</code> → Nexus/Maven Central</td></tr><tr><td>条件编译</td><td><code>[features]</code></td><td><code>&lt;profiles&gt;</code></td></tr></tbody></table></div>
 <hr>
 <h2>🚀 第十四章关键点</h2>
 <ol>
@@ -3988,8 +3951,6 @@ if let Some(parent) = leaf.parent.borrow().upgrade() {
 <div class="table-wrap"><table><thead><tr><th>引用类型</th><th><code>Rc::clone</code></th><th><code>Rc::downgrade</code></th></tr></thead><tbody><tr><td>类型</td><td><code>Rc&lt;T&gt;</code>（强引用）</td><td><code>Weak&lt;T&gt;</code>（弱引用）</td></tr><tr><td>引用计数</td><td><code>strong_count + 1</code></td><td><code>weak_count + 1</code></td></tr><tr><td>阻止释放</td><td>✅ 是（只要我活着，数据就不能死）</td><td>❌ 否（你死你的，我不拦着）</td></tr><tr><td>访问方式</td><td>直接访问</td><td><code>.upgrade()</code> → <code>Option&lt;Rc&lt;T&gt;&gt;</code>（可能拿到 None）</td></tr></tbody></table></div>
 <p><strong>vs Java</strong>：<code>Weak&lt;T&gt;</code> ≈ Java 的 <code>WeakReference&lt;T&gt;</code>，<code>upgrade()</code> ≈ <code>WeakReference.get()</code>（可能返回 null）。思路完全一致，都是解决"你指我我指你，谁也不放手"的问题。</p>
 <hr>
-<h2>📌 速查表——智能指针全家福</h2>
-<div class="table-wrap"><table><thead><tr><th>智能指针</th><th>作用</th><th>类似 Java 的概念</th></tr></thead><tbody><tr><td><code>Box&lt;T&gt;</code></td><td>堆分配</td><td>所有 Java 对象（默认就在堆上）</td></tr><tr><td><code>Rc&lt;T&gt;</code></td><td>单线程多所有权</td><td>共享引用（但 Java 是自动的）</td></tr><tr><td><code>Arc&lt;T&gt;</code></td><td>多线程多所有权</td><td>线程安全的共享引用</td></tr><tr><td><code>RefCell&lt;T&gt;</code></td><td>运行时借用检查（内部可变）</td><td>普通可变对象（但有运行时检查）</td></tr><tr><td><code>Cell&lt;T&gt;</code></td><td>轻量内部可变，常用于 <code>Copy</code> 小值或整体替换</td><td><code>AtomicInteger</code>（只在"小值原地更新"这个概念上类似）</td></tr><tr><td><code>Cow&lt;T&gt;</code></td><td>写时复制（借用 or 拥有）</td><td>无直接等价物</td></tr><tr><td><code>Weak&lt;T&gt;</code></td><td>弱引用，破循环</td><td><code>WeakReference&lt;T&gt;</code></td></tr></tbody></table></div>
 <hr>
 <h2>🚀 第十五章关键点</h2>
 <ol>
@@ -4273,8 +4234,6 @@ list.parallelStream()
 <p>💡 <strong>无畏并发（Fearless Concurrency）</strong>：所有权和类型系统能在编译时排除数据竞争。但请注意，它挡不住死锁、饥饿、业务层的竞态条件——这些逻辑问题依然需要你好好设计和测试。编译器是你安全带，不是自动驾驶。</p>
 </blockquote>
 <hr>
-<h2>📌 Java 开发者速查表</h2>
-<div class="table-wrap"><table><thead><tr><th>概念</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>创建线程</td><td><code>thread::spawn</code></td><td><code>new Thread()</code></td></tr><tr><td>等待线程</td><td><code>handle.join()</code></td><td><code>thread.join()</code></td></tr><tr><td>消息传递</td><td><code>mpsc::channel</code></td><td><code>BlockingQueue</code></td></tr><tr><td>互斥锁</td><td><code>Mutex&lt;T&gt;</code></td><td><code>synchronized</code> / <code>ReentrantLock</code></td></tr><tr><td>读写锁</td><td><code>RwLock&lt;T&gt;</code></td><td><code>ReentrantReadWriteLock</code></td></tr><tr><td>原子引用计数</td><td><code>Arc&lt;T&gt;</code></td><td>GC 自动管理</td></tr><tr><td>屏障</td><td><code>Barrier</code></td><td><code>CyclicBarrier</code></td></tr><tr><td>单次执行</td><td><code>OnceLock</code> / <code>LazyLock</code></td><td>双重检查锁 / <code>AtomicReference</code></td></tr><tr><td>条件变量</td><td><code>Condvar</code></td><td><code>Condition</code></td></tr><tr><td>数据并行</td><td><code>rayon</code> crate</td><td><code>parallelStream()</code></td></tr><tr><td>线程安全标记</td><td><code>Send</code> + <code>Sync</code>（编译时）</td><td>无（靠开发者自律）</td></tr><tr><td>自动解锁</td><td><code>Drop</code> trait</td><td><code>synchronized</code> 块自动 / <code>finally</code></td></tr></tbody></table></div>
 <hr>
 <h2>🚀 第十六章关键点</h2>
 <ol>
@@ -4554,8 +4513,6 @@ app.layer(CorsLayer::permissive());
 <p>ch21 是为了<strong>理解底层原理</strong>——让你知道 HTTP 请求到底是怎么被解析的。本节是为了<strong>高效开发</strong>。实际项目中直接用 axum 即可。</p>
 </blockquote>
 <hr>
-<h2>📌 速查表</h2>
-<div class="table-wrap"><table><thead><tr><th>Rust</th><th>Java</th><th>说明</th></tr></thead><tbody><tr><td><code>async fn</code></td><td><code>CompletableFuture.supplyAsync()</code></td><td>异步函数</td></tr><tr><td><code>.await</code></td><td><code>get()</code> / <code>join()</code> 或 <code>then*</code> 组合</td><td>Rust 暂停任务；Java 的 <code>get()</code> 阻塞，组合 API 可非阻塞</td></tr><tr><td><code>tokio::spawn</code></td><td><code>CompletableFuture.runAsync()</code></td><td>提交轻量级异步任务到运行时（不是 OS 线程！）</td></tr><tr><td><code>tokio::join!</code></td><td><code>CompletableFuture.allOf()</code></td><td>并发执行多个</td></tr><tr><td><code>Stream</code></td><td><code>Publisher</code> / <code>Flow</code> (Reactive)</td><td>异步迭代</td></tr><tr><td>需第三方运行时（如 <code>tokio</code>）</td><td>JVM / Executor / 虚拟线程生态</td><td>Rust 标准库没有自带 async 运行时</td></tr><tr><td>Future 编译为状态机，通常开销很低</td><td><code>CompletableFuture</code> / 线程 / 虚拟线程模型不同</td><td>不要把 async 任务简单等同于 OS 线程</td></tr></tbody></table></div><hr>
 <h2>📌 下一章预告：面向对象编程与 Trait 对象</h2>
 <p>异步编程学会了，Rust 的并发模型基本通关。下一章聊聊一个容易引起误会的话题——Rust 的"面向对象"。Rust 没有继承，没有 <code>class</code>，但有 Trait 对象实现多态，有 Newtype 模式做类型包装，有类型状态模式把运行时检查提到编译时。丢掉继承的锤子，你会发现手里的螺丝刀反而更多了。</p>
 </div>
@@ -4791,8 +4748,6 @@ let published = pending.approve();
 println!(&quot;{}&quot;, published.content());  // ✅ 只有 PublishedPost 能读内容</code></pre>
 <p>想象一下：<code>DraftPost</code> 上根本没有 <code>content()</code> 方法——你想看草稿的内容？不好意思，草稿不给你看。只有审核通过发布了才能读。这不是"运行时抛异常"，而是<strong>编译器直接说不行</strong>。Java 优雅如 Spring State Machine 也好，笨拙如一堆 if-else 也好，都做不到这种编译时强制。</p>
 <hr>
-<h2>📌 Java 开发者速查表</h2>
-<div class="table-wrap"><table><thead><tr><th>概念</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>多态（动态）</td><td><code>Box&lt;dyn Trait&gt;</code></td><td>接口引用</td></tr><tr><td>多态（静态）</td><td><code>&lt;T: Trait&gt;</code></td><td>泛型</td></tr><tr><td>继承</td><td>❌ 用 Trait + 组合代替</td><td><code>extends</code></td></tr><tr><td>类型安全包装</td><td>Newtype <code>struct Id(i32)</code></td><td><code>record Id(int value)</code></td></tr><tr><td>状态模式</td><td>类型状态（编译时检查）</td><td>状态类（运行时检查）</td></tr><tr><td>虚表</td><td><code>dyn Trait</code> 自动生成</td><td>JVM 虚方法表</td></tr><tr><td>对象安全</td><td>编译器强制检查</td><td>所有接口可做引用类型</td></tr></tbody></table></div>
 <hr>
 <h2>🚀 第十八章关键点</h2>
 <ol>
@@ -5075,8 +5030,6 @@ while let Ok(msg) = rx.recv() {
 }</code></pre>
 <p>它就像一个不知疲倦的流水线工人：来一个处理一个，直到传送带停了（channel 关闭 / 迭代器耗尽）。</p>
 <hr>
-<h2>📌 Java 开发者速查表</h2>
-<div class="table-wrap"><table><thead><tr><th>概念</th><th>Rust</th><th>Java</th></tr></thead><tbody><tr><td>模式匹配</td><td><code>match</code>（穷尽性检查）</td><td><code>switch</code>（Java 17+ pattern matching）</td></tr><tr><td>类型测试 + 绑定</td><td><code>if let Some(x) = val</code></td><td><code>if (val instanceof String s)</code></td></tr><tr><td>解构赋值</td><td><code>let (x, y) = tuple;</code></td><td>❌ 不支持</td></tr><tr><td>解构结构体</td><td><code>let Point { x, y } = p;</code></td><td>❌ 不支持（record 有类似）</td></tr><tr><td>嵌套解构</td><td><code>Color::Rgb(r, g, b)</code></td><td>❌ 不支持</td></tr><tr><td>多模式 OR</td><td><code>1 | 2 | 3 =&gt;</code></td><td><code>case 1, 2, 3 -></code>（Java 14+）</td></tr><tr><td>范围匹配</td><td><code>13..=19 =></code></td><td>❌ 不支持</td></tr><tr><td>守卫条件</td><td><code>Some(x) if x > 5 =></code></td><td><code>case String s when s.length() > 5</code>（Java 21+）</td></tr><tr><td><code>@</code> 绑定</td><td><code>n @ 0..=12</code></td><td>❌ 不支持</td></tr><tr><td>忽略值</td><td><code>_</code> / <code>..</code></td><td><code>default</code></td></tr><tr><td><code>while let</code></td><td><code>while let Some(v) = next()</code></td><td>❌ 不支持</td></tr></tbody></table></div>
 <hr>
 <h2>🚀 第十九章关键点</h2>
 <ol>
