@@ -2700,6 +2700,28 @@ impl Summary for Vec&lt;i32&gt; { }         // 自己的 trait + 外部类型
 impl Display for Vec&lt;i32&gt; { }         // 外部 trait + 外部类型</code></pre>
 <p>为什么这么搞？防止两个不同的 crate 都给 <code>Vec&lt;i32&gt;</code> 实现 <code>Display</code>，导致编译器不知道该用哪个。"孤儿"的意思就是——两个爹妈（trait 和 type）都不在自己的 crate 里，这孩子就没人管（不能瞎实现）。</p>
 <p><strong>vs Java</strong>：Java 没有此限制。Rust 的孤儿规则确保<strong>两个 crate 不会互相冲突</strong>。</p>
+<h3>同类型不能重复 impl 同一 trait（E0119）</h3>
+<p>孤儿规则管的是"跨 crate 别瞎 impl"，那<strong>同一个 crate 里</strong>呢？也不能给同一个类型写两遍同一个 trait 的 impl——编译器直接拒绝（错误码 <strong>E0119</strong>，conflicting implementations）：</p>
+<pre class="code-block" data-lang="rust"><code>trait Greet { fn say_hi(&amp;self); }
+struct Foo;
+
+impl Greet for Foo {
+    fn say_hi(&amp;self) { println!(&quot;A&quot;); }
+}
+
+impl Greet for Foo {           // ❌ E0119：Foo 已经有 Greet 的实现了
+    fn say_hi(&amp;self) { println!(&quot;B&quot;); }
+}</code></pre>
+<p>为啥？trait 方法是按 <strong>(类型, trait)</strong> 这个组合找实现的——<code>foo.say_hi()</code> 编译器要定位"Foo 的 Greet 实现"。要是允许两个，它不知道用哪个，就歧义了。所以 Rust 有条硬规则：<strong>每个 (类型, trait) 组合，全局只能有一个 impl</strong>，这叫<strong>一致性（coherence）</strong>。</p>
+<p>孤儿规则和 E0119 是<strong>同一枚硬币的两面</strong>，都为一致性服务：</p>
+<ul>
+<li><strong>孤儿规则</strong>——防<strong>跨 crate</strong> 冲突（两个 crate 都给 <code>Vec&lt;i32&gt;</code> impl <code>Display</code>）</li>
+<li><strong>E0119</strong>——防<strong>同 crate 内</strong> 冲突（你自己给 <code>Foo</code> 写两遍 <code>Greet</code>）</li>
+</ul>
+<p>一个例外：泛型 trait 带不同类型参数算<strong>不同的 trait</strong>，可以共存：</p>
+<pre class="code-block" data-lang="rust"><code>impl From&lt;i32&gt;    for Foo { ... }   // ✅
+impl From&lt;String&gt; for Foo { ... }   // ✅ From&lt;i32&gt; 和 From&lt;String&gt; 是两个不同的 trait</code></pre>
+<p><strong>vs Java</strong>：<code>class Foo implements Greet, Greet</code>（implements 列表重复同一接口）也是编译错误。Rust 的 E0119 对应这个——实现必须唯一。只是 Rust 用 <code>impl Trait for Type</code> 分块写，语法上"能写多个 impl 块"，容易让人误以为"能写两遍 Greet"，但同一 trait 只能一块。</p>
 <h3>Blanket Implementation</h3>
 <pre class="code-block" data-lang="rust"><code>// 标准库：为所有实现了 Display 的类型实现 ToString
 impl&lt;T: Display&gt; ToString for T {
