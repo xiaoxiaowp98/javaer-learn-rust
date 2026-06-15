@@ -3380,15 +3380,46 @@ opt-level = 3      # 发布模式：全力优化，运行嗖嗖快</code></pre>
 <p>这就好比你有两套衣服：开发时穿拖鞋大裤衩（轻便），发布时穿西装打领带（正式），互不干扰。</p>
 <hr>
 <h2>14.2 发布到 Crates.io——把你的宝贝挂上货架</h2>
-<p>Rust 的中央仓库叫 crates.io，相当于 Maven Central 但更简洁。</p>
-<pre class="code-block" data-lang="rust"><code>/// 文档注释示例（生成 HTML 文档）
-/// # Examples
+<p>Rust 的中央仓库叫 crates.io，相当于 Maven Central 但更简洁。发布前先把文档写好——Rust 内建文档工具，写法和 Java 的 Javadoc 很像，但功力更强：</p>
+
+<h3>三种文档写法</h3>
+
+<p><strong>① <code>///</code> 函数/结构体文档</strong>（≈ Java 的 <code>/** ... */</code> Javadoc）：贴在被注释项<strong>上面</strong>，markdown 格式。代码块里用 <code>#</code> 隐藏 setup 代码（只编译不显示在文档里）：</p>
+<pre class="code-block" data-lang="rust"><code>/// 把传入的数字加一。</code><span data-lang="rust"><code>
+/// </code></span><code>/// # Examples
 /// ```
 /// let result = my_crate::add_one(5);
 /// assert_eq!(result, 6);
 /// ```
 pub fn add_one(x: i32) -&gt; i32 { x + 1 }</code></pre>
-<p>三条斜线 <code>///</code> ≈ Java 的 <code>/&lt;strong&gt; &lt;em&gt;/</code> Javadoc。两条斜线加感叹号 <code>//!</code> = 为 crate/模块写文档（≈ package-level Javadoc）。最骚的是——</strong>文档中的代码示例会自动作为测试运行</em>*！你敢写错，测试就敢挂，文档和代码永远同步，Java 那套手写注释手写测试的苦日子一去不复返。</p>
+<pre class="code-block" data-lang="java"><code>/**
+ * 把传入的数字加一。
+ *
+ * &lt;pre&gt;{@code
+ * int result = MyLib.addOne(5);
+ * assertEquals(6, result);
+ * }&lt;/pre&gt;
+ */
+public static int addOne(int x) { return x + 1; }</code></pre>
+
+<p><strong>② <code>//!</code> 模块/crate 级文档</strong>（≈ Java 的 <code>package-info.java</code> 或 <code>module-info.java</code> 里的包级 Javadoc）：写在文件<strong>最顶部</strong>，描述整个模块/crate 是干嘛的：</p>
+<pre class="code-block" data-lang="rust"><code>//! 这是一个命令行搜索工具。</code><span data-lang="rust"><code>
+//! </code></span><code>//! 用法：
+//! ```
+//! $ minigrep query file.txt
+//! ```
+//! 类似 grep，但用 Rust 写的，更快更安全。</code></pre>
+<pre class="code-block" data-lang="java"><code>/** 这是命令行搜索工具的包级文档。类似 Rust 的 //!。 */
+package com.example.minigrep;</code></pre>
+
+<p><strong>③ <code>cargo doc</code> 生成</strong>：运行 <code>cargo doc --open</code>，自动生成 HTML 文档并在浏览器打开。比 <code>mvn javadoc:javadoc</code> 快一大截，而且——<strong>文档中的代码示例会自动作为测试运行</strong>（<code>cargo test</code> 会收集它们）。你敢写错，测试就敢挂。代码即文档，文档即测试，再也用不着手写注释再手写测试了。</p>
+
+<div class="table-wrap"><table><thead><tr><th></th><th>Rust</th><th>Java</th></tr></thead><tbody>
+<tr><td>函数/结构体文档</td><td><code>/// 注释</code></td><td><code>/** 注释 */</code></td></tr>
+<tr><td>模块/crate 文档</td><td><code>//! 注释</code></td><td><code>package-info.java</code></td></tr>
+<tr><td>生成命令</td><td><code>cargo doc --open</code></td><td><code>mvn javadoc:javadoc</code></td></tr>
+<tr><td>代码示例自动测试</td><td>✅ 内建（<code>cargo test</code> 会自动跑）</td><td>❌ 需额外配置（JUnit + surefire）</td></tr>
+</tbody></table></div>
 <pre class="code-block" data-lang="bash"><code>cargo doc --open   # 生成文档并在浏览器打开，比 mvn javadoc:javadoc 快十倍</code></pre>
 <p><strong>发布步骤</strong>（四步走）：</p>
 <ol>
@@ -3402,27 +3433,94 @@ pub fn add_one(x: i32) -&gt; i32 { x + 1 }</code></pre>
 </blockquote>
 <hr>
 <h2>14.3 Cargo 工作空间——一个 repo 管多个 crate</h2>
-<p>多个 crate 共享一个 <code>Cargo.lock</code>，一个爹带一群娃：</p>
+<p><strong>单个 crate 与工作空间的区别：</strong>单个 crate 就是一个 <code>Cargo.toml</code> + 一个 <code>src/</code>；工作空间是<strong>一个根 Cargo.toml 管着多个子 crate</strong>，子 crate 之间可以互相依赖调用。</p>
+
+<p><strong>场景</strong>：你写了个命令行工具（bin crate），想把核心逻辑拆出来当库（lib crate）给别的项目用，或者一个项目里同时有 CLI、核心库、测试工具三个子 crate——这就是工作空间的用武之地。</p>
+
+<h3>目录结构（不是抽象的 members，是真实文件）</h3>
 <pre class="code-block" data-lang=""><code>my-project/
-├── Cargo.toml        # [workspace]
-│   members = [&quot;crate-a&quot;, &quot;crate-b&quot;]
-├── crate-a/
-│   └── Cargo.toml
-└── crate-b/
-    └── Cargo.toml</code></pre>
-<p>这不就是 Maven 的多模块项目吗？是的，结构几乎一模一样：根 <code>Cargo.toml</code> ≈ parent <code>pom.xml</code>，<code>members</code> ≈ <code>&lt;modules&gt;</code>。</p>
-<h3>工作空间规则</h3>
-<pre class="code-block" data-lang=""><code>my-workspace/
-├── Cargo.lock        ← 整个工作空间共享一个 lock 文件
-├── Cargo.toml        ← [workspace] 配置
-├── crate-a/
+├── Cargo.toml          ← 根配置（只管 workspace，自己不是 crate）
+├── Cargo.lock          ← 整个工作空间共享一个
+├── cli/                ← 子 crate：命令行入口（bin）
 │   ├── Cargo.toml
 │   └── src/
-└── crate-b/
+│       └── main.rs
+├── core/               ← 子 crate：核心库（lib）
+│   ├── Cargo.toml
+│   └── src/
+│       └── lib.rs
+└── test-utils/         ← 子 crate：测试辅助工具（lib）
     ├── Cargo.toml
-    └── src/</code></pre>
-<div class="table-wrap"><table><thead><tr><th>规则</th><th>说明</th></tr></thead><tbody><tr><td>共享 <code>Cargo.lock</code></td><td>所有 crate 依赖版本锁定一致，不会出现"A 用 serde 1.0，B 用 serde 2.0"的狗血剧</td></tr><tr><td>共享 <code>target/</code></td><td>只有一个编译输出目录，不浪费磁盘空间</td></tr><tr><td>独立 <code>Cargo.toml</code></td><td>每个 crate 有自己的配置，管好自己的事</td></tr><tr><td>跨 crate 依赖</td><td><code>crate-a</code> 的 <code>Cargo.toml</code> 写 <code>crate-b = { path = "../crate-b" }</code> 即可</td></tr></tbody></table></div>
-<p><strong>vs Java</strong>：Maven 多模块项目的 <code>parent pom.xml</code> + 子模块 <code>pom.xml</code> 结构非常类似。区别在于 Cargo 不需要你折腾 <code>&lt;dependencyManagement&gt;</code> 那套版本统一地狱——一个共享的 <code>Cargo.lock</code> 全搞定。</p>
+    └── src/
+        └── lib.rs</code></pre>
+
+<h3>每个文件写什么</h3>
+
+<p><strong>根 Cargo.toml</strong>（只管 members 列表，自己不写代码）：</p>
+<pre class="code-block" data-lang="toml"><code>[workspace]
+members = ["cli", "core", "test-utils"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"</code></pre>
+
+<p><strong>core/Cargo.toml</strong>（lib crate，核心逻辑）：</p>
+<pre class="code-block" data-lang="toml"><code>[package]
+name = "my-core"
+version = "0.1.0"
+edition = "2021"</code></pre>
+<pre class="code-block" data-lang="rust"><code>// core/src/lib.rs   ← core 是 lib crate（必须有 lib.rs）
+pub fn search(query: &amp;str, content: &amp;str) -&gt; Vec&lt;String&gt; {
+//  ^^^ 必须 pub！cli 是另一个 crate，只能调 core 的公有 API
+    content.lines()
+        .filter(|line| line.contains(query))
+        .map(|s| s.to_string())
+        .collect()
+}</code></pre>
+
+<p><strong>cli/Cargo.toml</strong>（bin crate，依赖 core）：</p>
+<pre class="code-block" data-lang="toml"><code>[package]
+name = "my-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+my-core = { path = "../core" }    # ← 跨 crate 依赖：路径指过去就行</code></pre>
+<pre class="code-block" data-lang="rust"><code>// cli/src/main.rs
+use my_core::search;   // 跨 crate 调用了——和 use serde::Serialize 是一个道理
+
+fn main() {
+    let results = search("hello", "hello world\nhi there");
+    println!("{:?}", results);
+}</code></pre>
+
+<p><strong>为什么 core 那边函数必须 <code>pub</code>？</strong>因为 cli 和 core 是<strong>两个独立 crate</strong>（cli 通过 <code>path = "../core"</code> 把 core 当外部依赖引入），不是同一个 crate 下的模块。这和</strong>第 7 章讲的"同 crate 模块互调不需要 pub"<strong>不矛盾——同 crate 是一家人，工作空间是两个独立的家，跨了门就得用 <code>pub</code> 开门。<code>core</code> 必须是 <strong>lib crate</strong>（有 <code>lib.rs</code>），二进制 crate（<code>main.rs</code>）不能作为其他 crate 的依赖。</p>
+
+<h3>工作空间 vs 单 crate 对比</h3>
+<div class="table-wrap"><table><thead><tr><th></th><th>单个 crate</th><th>工作空间</th></tr></thead><tbody>
+<tr><td>根 Cargo.toml</td><td>自己就是 crate，写 <code>[package]</code></td><td>只写 <code>[workspace]</code>，自己不产出代码</td></tr>
+<tr><td>Cargo.lock</td><td>一个 crate 一个</td><td>所有子 crate 共享一个，版本统一</td></tr>
+<tr><td>target/</td><td>各自一个</td><td>共享一个，省磁盘</td></tr>
+<tr><td>跨 crate 调用</td><td>不存在（只有一个）</td><td><code>path = "../core"</code> 指过去，像本地依赖</td></tr>
+<tr><td>Maven 类比</td><td>单模块项目</td><td>多模块项目（parent pom + 子模块）</td></tr>
+</tbody></table></div>
+
+<p><strong>vs Java</strong>：Maven 多模块项目的 parent pom.xml + 子模块 pom.xml 结构非常类似。区别在于 Cargo 不需要你折腾 <code>&lt;dependencyManagement&gt;</code> 那套版本统一地狱——一个共享的 Cargo.lock 全搞定。</p>
+
+<p><strong>一个 crate 能不能也出多个可执行文件？</strong>能，两种方式：</p>
+
+<p><strong>① 工作空间多 bin crate</strong>（前面用的）：每个子 crate 有自己的 <code>main.rs</code>，跑的时候 <code>cargo run -p cli</code> 选名字。适合正经多项目。</p>
+
+<p><strong>② 同一个 crate 里放 <code>src/bin/</code></strong>：更轻量，不用多套 <code>Cargo.toml</code>，适合同个项目里几个小工具：</p>
+<pre class="code-block" data-lang=""><code>my-project/
+├── Cargo.toml
+└── src/
+    ├── main.rs          ← 默认 bin：my-project
+    ├── lib.rs           ← 共享逻辑（lib）
+    └── bin/
+        ├── tool_a.rs    ← 编译出 tool_a
+        └── tool_b.rs    ← 编译出 tool_b</code></pre>
+<p>两种任选——多项目用工作空间，够轻用 <code>src/bin/</code>。</p>
 <hr>
 <h2>14.4 依赖管理进阶——比 Maven 聪明一百倍</h2>
 <h3><code>cargo add</code> —— 命令行添加依赖，从此告别手动改文件</h3>
@@ -3466,26 +3564,69 @@ serde = { path = &quot;../serde&quot; }                # 本地路径</code></pr
 <p>💡 经验规则：应用 / 二进制项目提交 <code>Cargo.lock</code> 以保证可复现构建——三年前的项目今天还能一模一样地编译出来；库项目则按团队策略决定，但要知道下游依赖你的库时不会使用你仓库里的 <code>Cargo.lock</code>。</p>
 </blockquote>
 <hr>
-<h2>14.5 <code>[features]</code> —— 条件编译特性，比 Maven Profile 更精细</h2>
+<h2>14.5 <code>[features]</code> —— 给你的库装开关，用户要啥开啥</h2>
+
+<p>先不谈语法，打个比方。你开了家面馆，菜单上写着：<strong>"牛肉面（默认加香菜）"</strong>。客人进门默认就吃这个。但有客人讨厌香菜，你得给他留个口子说"不要香菜"；也有客人想加辣，你得能说"加辣"。<code>features</code> 就是给你的代码留这些"加料开关"。</p>
+
+<p>换到代码场景：你写了个数据解析库，<strong>既能解析 JSON 又能解析 YAML</strong>。但下载你库的用户里，<strong>有一大半根本不用 YAML</strong>。凭什么逼他们把 YAML 的解析代码、连同 YAML 那个第三方库一起编译进自己的程序里？凭空多出几百 KB、编译还变慢。<code>features</code> 让你把 JSON 和 YAML 拆成两个"加料开关"，用户要哪个开哪个，不要的根本不进他的程序。</p>
+
+<h3>第一步：在 Cargo.toml 里——给依赖贴个"可选"标签，再定义开关</h3>
+
+<p>这里有个最让人懵的点：<code>optional = true</code> 是啥意思？为啥一个 <code>true</code> 就能管"装不装"？——<strong>它管的是 Cargo 的下载决策</strong>：</p>
+<ul>
+<li><strong>不写 <code>optional</code></strong>（普通依赖）：Cargo 一律<strong>无条件下载并编译</strong>。哪怕你代码里压根没用到，它也在那。</li>
+<li><strong>写了 <code>optional = true</code></strong>：Cargo 说"这玩意<strong>先不装，等我看到有人开了对应的 feature 再装</strong>"。光这一个 <code>true</code>，就把"无条件装"变成了"看情况装"——这就是 <code>optional = true</code> 管"装不装"的全部含义。</li>
+</ul>
 <pre class="code-block" data-lang="toml"><code>[features]
-default = [&quot;json&quot;]           # 默认启用 json
-json = [&quot;serde_json&quot;]        # json 特性依赖 serde_json crate
-full = [&quot;json&quot;, &quot;yaml&quot;]
+default = [&quot;json&quot;]            # 不指定时，默认开 json（像面馆默认加香菜）
+json = [&quot;dep:serde_json&quot;]     # "json" 开关：一开它，dep:serde_json 这个依赖才被装
+yaml = [&quot;dep:serde_yaml&quot;]     # "yaml" 开关：同上，开它才装 serde_yaml
+full = [&quot;json&quot;, &quot;yaml&quot;]       # "full" = 一键全开（组合开关）
 
 [dependencies]
-serde = &quot;1.0&quot;
-serde_json = { version = &quot;1.0&quot;, optional = true }  # 可选依赖</code></pre>
-<pre class="code-block" data-lang="rust"><code>// 代码中根据 feature 条件编译
-#[cfg(feature = &quot;json&quot;)]
-fn parse_json() { /* ... */ }
+serde = &quot;1.0&quot;                 # 没写 optional → 必装。所有功能都要它，没得选
+serde_json = { version = &quot;1.0&quot;, optional = true }   # optional → 看开关
+serde_yaml = { version = &quot;0.9&quot;, optional = true }</code></pre>
+<p>读法：<strong>"开 json 这个开关，就装 serde_json；不开就不装。"</strong> 开关和依赖之间的连线，就是 <code>json = [&quot;dep:serde_json&quot;]</code> 这一句画的。</p>
 
-#[cfg(feature = &quot;yaml&quot;)]
-fn parse_yaml() { /* ... */ }</code></pre>
-<pre class="code-block" data-lang="bash"><code>cargo build                       # 默认特性（json）
-cargo build --no-default-features # 不启用任何特性，极简模式
-cargo build --features &quot;yaml&quot;     # 指定特性
-cargo build --all-features        # 全部特性，火力全开</code></pre>
-<p><strong>vs Java</strong>：Maven 的 <code>&lt;profile&gt;</code> + <code>&lt;optional&gt;true&lt;/optional&gt;</code> 类似，但 Rust 的 feature 是<strong>编译时</strong>条件——不该编译的代码直接不存在于二进制里。Maven profile 只是<strong>构建时</strong>选择依赖集合，代码该有的还在。Rust 的 feature 更彻底：你用 <code>#[cfg(feature = "yaml")]</code> 标注的代码块，没启用 yaml 特性时编译器连看都不看一眼。</p>
+<h3>第二步：在代码里——给"只有开了才干活"的代码块贴标签</h3>
+
+<p>装不装解决了，那<strong>代码怎么写才不会炸</strong>？想象一个灾难场景：</p>
+<pre class="code-block" data-lang="rust"><code>// ❌ 灾难写法：没开 yaml，serde_yaml 也没装，但代码里直接用了它
+pub fn to_yaml(d: &amp;Data) -&gt; String {
+    serde_yaml::to_string(d).unwrap()   // 编译器：serde_yaml？哪个 serde_yaml？没装！→ 报错
+}</code></pre>
+<p>用户没开 yaml 开关 → serde_yaml 没装 → 编译器看到这行代码，找不到 serde_yaml，当场炸给你看。<strong>解决办法</strong>：用 <code>#[cfg(feature = &quot;yaml&quot;)]</code> 给这段代码贴个标签，告诉编译器<strong>"没开 yaml 开关时，这段代码当它不存在，你也别去管 serde_yaml 在不在"</strong>：</p>
+<pre class="code-block" data-lang="rust"><code>#[cfg(feature = &quot;json&quot;)]      // ✅ 开了 json 才编译这段；没开就跳过，不碰 serde_json
+pub fn to_json(d: &amp;Data) -&gt; String {
+    serde_json::to_string(d).unwrap()
+}
+
+#[cfg(feature = &quot;yaml&quot;)]      // 同上，开了 yaml 才编译这段
+pub fn to_yaml(d: &amp;Data) -&gt; String {
+    serde_yaml::to_string(d).unwrap()
+}</code></pre>
+<p><strong>所以 <code>optional</code> 和 <code>#[cfg]</code> 是两条腿，缺一条就瘸</strong>：<code>optional = true</code> 让"不开开关就不装依赖"；<code>#[cfg]</code> 让"不开开关就跳过用这依赖的代码"。两者合力，开关关掉时——依赖不装、代码不编，干净利落。缺一个：<code>optional</code> 不写就白装一堆没用的；<code>#[cfg]</code> 不写就编译报错。</p>
+
+<h3>第三步：用户选开关</h3>
+<pre class="code-block" data-lang="bash"><code>cargo build                          # 不指定 → 用 default（json）
+cargo build --features &quot;yaml&quot;         # 加开 yaml（json + yaml）
+cargo build --no-default-features     # 关掉所有默认开关（连 json 都不装）
+cargo build --all-features            # 全开</code></pre>
+
+<h3>纯自己的功能也能开关（不依赖第三方）</h3>
+<p>上面是"开关控制第三方库"。其实开关也能只控制<strong>你自己的代码</strong>——不挂任何依赖，Cargo.toml 里只定义开关名，纯靠 <code>#[cfg]</code> 拆代码。比如你的库有"完整版"和"精简版"两种行为：</p>
+<pre class="code-block" data-lang="toml"><code>[features]
+full = []     # 空数组 = 不挂依赖，纯开关
+lite = []</code></pre>
+<pre class="code-block" data-lang="rust"><code>#[cfg(feature = &quot;full&quot;)]
+pub fn advanced_search(q: &amp;str) { /* 正则 + 模糊匹配，功能多但慢 */ }
+
+#[cfg(feature = &quot;lite&quot;)]
+pub fn basic_search(q: &amp;str) { /* 只精确匹配，快但功能少 */ }
+// 用户 --features lite 就只编译 basic_search，advanced_search 连代码都不进二进制</code></pre>
+
+<p><strong>一句话总结</strong>：<code>features</code> 就是给库装开关——<code>optional</code> 管"依赖装不装"，<code>#[cfg]</code> 管"代码编不编"。写库给别人用时这招尤其值钱：别把你那一堆依赖强塞给用户，让人家<strong>只付他用得着的代价</strong>。</p>
 <hr>
 <h2>14.6 常用 Cargo 命令速查——你的日常工具箱</h2>
 <div class="table-wrap"><table><thead><tr><th>命令</th><th>用途</th><th>类比 Maven</th></tr></thead><tbody><tr><td><code>cargo new</code></td><td>创建项目</td><td><code>mvn archetype:generate</code></td></tr><tr><td><code>cargo build</code></td><td>编译</td><td><code>mvn compile</code></td></tr><tr><td><code>cargo run</code></td><td>编译 + 运行</td><td><code>mvn exec:java</code></td></tr><tr><td><code>cargo test</code></td><td>运行测试 + 文档测试</td><td><code>mvn test</code></td></tr><tr><td><code>cargo check</code></td><td>仅检查编译错误（更快）</td><td>IDE 实时检查</td></tr><tr><td><code>cargo doc --open</code></td><td>生成文档</td><td><code>mvn javadoc:javadoc</code></td></tr><tr><td><code>cargo add &lt;crate&gt;</code></td><td>添加依赖</td><td>手动编辑 <code>pom.xml</code></td></tr><tr><td><code>cargo rm &lt;crate&gt;</code></td><td>移除依赖</td><td>手动编辑 <code>pom.xml</code></td></tr><tr><td><code>cargo tree</code></td><td>查看依赖树</td><td><code>mvn dependency:tree</code></td></tr><tr><td><code>cargo outdated</code></td><td>检查过期依赖</td><td><code>mvn versions:display-dependency-updates</code></td></tr><tr><td><code>cargo audit</code></td><td>安全漏洞检查</td><td>OWASP Dependency-Check</td></tr><tr><td><code>cargo fmt</code></td><td>格式化代码</td><td>无内置（靠 IDE）</td></tr><tr><td><code>cargo clippy</code></td><td>代码 lint</td><td>Checkstyle / SpotBugs</td></tr><tr><td><code>cargo publish</code></td><td>发布到 crates.io</td><td><code>mvn deploy</code></td></tr><tr><td><code>cargo update</code></td><td>更新 Cargo.lock 中的依赖</td><td><code>mvn versions:use-latest-releases</code></td></tr></tbody></table></div>
@@ -3793,6 +3934,47 @@ let b = Box::new(String::from(&quot;hello&quot;));
 print_len(&amp;b);  // &amp;Box&lt;String&gt; → &amp;String → &amp;str 全自动，比自动挡还顺滑</code></pre>
 <blockquote>
 <p>💡 只要类型实现了 <code>Deref&lt;Target = T&gt;</code>，<code>&SmartPtr</code> 就能自动转为 <code>&T</code>。这是 Rust 极少数的"隐式行为"——Rust 平时抠抠搜搜，但在这件事上大方得让人感动。</p>
+</blockquote>
+
+<h3>真实使用场景：包装类型，让"加料版"用起来和原版一样顺</h3>
+<p><code>Box</code> 的例子太小看不出 <code>Deref</code> 的价值。<strong>真正值钱的场景</strong>是你自己造个"包装类型"（Newtype 模式）——想给某个类型加点自己的逻辑/校验，又不想丢掉原类型的所有方法。没有 <code>Deref</code>，每次用原类型方法都得 <code>.0</code> 剥一层皮，恶心死；有了 <code>Deref</code>，像用原类型一样顺手。</p>
+
+<p>案例：包装 <code>String</code> 造个 <code>Email</code> 类型，自带格式校验，又能继承 <code>String</code> 的所有方法。</p>
+<pre class="code-block" data-lang="rust"><code>use std::ops::Deref;
+
+struct Email(String);   // 元组结构体：包着一个 String，字段没名字，访问用 .0
+
+impl Email {
+    fn new(s: String) -&gt; Result&lt;Self, &amp;'static str&gt; {
+        if s.contains('@') { Ok(Email(s)) }   // 自己加的：校验邮箱格式
+        else { Err("邮箱格式不对") }
+    }
+    fn send(&self) { /* 自己加的方法 */ }
+}
+
+// 关键：实现 Deref，告诉编译器"解引用我时，给我里面那个 String 的引用"
+impl Deref for Email {
+    type Target = String;
+    fn deref(&self) -&gt; &amp;String { &amp;self.0 }
+}
+
+let email = Email::new("alice@example.com".into()).unwrap();
+email.send();          // ✅ 自己的方法
+email.len();           // ✅ String 的方法！不用 email.0.len()，直接 .len()（自动 deref）
+email.contains('@');   // ✅ 也是 String 的
+email.starts_with("a"); // ✅ 还是 String 的</code></pre>
+<p>没有 <code>Deref</code>，上面 <code>email.len()</code> 全得写成 <code>email.0.len()</code>，一层 <code>.0</code> 跟到天荒地老。<code>Deref</code> 让编译器看到 <code>email.len()</code> 时，自动<strong>"Email 没有 len？那解一层看看 → String 有！用它"</strong>——层层往下找，找到为止。这就是"装得像普通引用"的真正含义。</p>
+
+<h3>标准库里的 Deref 大户</h3>
+<div class="table-wrap"><table><thead><tr><th>类型</th><th>Deref 到</th><th>解决啥</th></tr></thead><tbody>
+<tr><td><code>Box&lt;T&gt;</code></td><td><code>&amp;T</code></td><td>Box 像普通引用一样用</td></tr>
+<tr><td><code>String</code></td><td><code>&amp;str</code></td><td>String 能直接传给要 <code>&amp;str</code> 的函数</td></tr>
+<tr><td><code>Vec&lt;T&gt;</code></td><td><code>&amp;[T]</code></td><td>Vec 能当 slice 用</td></tr>
+<tr><td><code>Rc&lt;T&gt;</code> / <code>Arc&lt;T&gt;</code></td><td><code>&amp;T</code></td><td>引用计数指针像普通引用</td></tr>
+</tbody></table></div>
+
+<blockquote>
+<p>⚠️ <strong>Deref 别乱用</strong>：它适合"我的类型 <strong>IS-A</strong> 内部类型"（Email 就是个 String、Box 就是个 T）。如果你的类型只是 <strong>HAS-A</strong>（包含一个 String 但语义不同），用 Deref 会让方法"漏"到内部、语义混淆，反而埋 bug。这种情况下老老实实 <code>.0</code> 剥皮反而更安全。</p>
 </blockquote>
 <hr>
 <h2>15.3 <code>Drop</code> Trait —— 离开作用域时自动清理，确定性的告别</h2>
