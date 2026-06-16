@@ -4016,6 +4016,67 @@ fn main() {
     } // C 先 drop——最小作用域的兄弟先走
 } // B 先 drop，然后 A（后进先出，和栈一模一样）</code></pre>
 <p>就像叠盘子：最晚放上去的最先拿下来。公平又符合直觉。</p>
+
+<h3>Drop 的实现原理：不写 Drop 默认会发生啥？</h3>
+<p>上面例子都是<strong>手写</strong> <code>impl Drop</code>（为了打印点东西看效果）。但绝大多数普通 struct 你<strong>根本不用写 Drop</strong>——编译器会自动生成一个默认的。这个默认 Drop 干的事很简单：<strong>逐字段递归销毁</strong>。</p>
+
+<pre class="code-block" data-lang="rust"><code>struct Point {
+    x: i32,
+    y: String,
+}
+
+// 你没写 Drop，编译器自动生成（伪代码）：
+impl Drop for Point {
+    fn drop(&amp;mut self) {
+        // 按字段声明顺序的【逆序】，逐个销毁
+        self.y.drop();    // 先销毁 String → 它的 Drop 会释放堆上的字符
+        self.x.drop();    // 再销毁 i32 → i32 是 Copy，啥也不干（栈上自动回收）
+    }
+}</code></pre>
+
+<p>每个字段递归往下销毁：</p>
+<ul>
+<li><strong>Copy 类型</strong>（<code>i32</code>、<code>f64</code>、<code>bool</code>...）：啥也不干,它们在栈上,作用域结束自动消失</li>
+<li><strong>堆类型</strong>（<code>String</code>、<code>Vec</code>、<code>Box</code>...）：调它们自己的 Drop,内部调 <code>dealloc</code>（类似 C 的 <code>free</code>）把堆内存还给操作系统</li>
+<li><strong>嵌套 struct</strong>:递归调内层的 Drop,一层层往下</li>
+</ul>
+
+<p><strong>所以你不用操心普通 struct 的内存释放</strong>——字段树自动递归销毁,该 dealloc 的字段(String/Vec/Box)自己 dealloc,全自动化。</p>
+
+<h3>那 Rc、Box 这些智能指针为啥要手写 Drop？</h3>
+<p>因为它们有<strong>额外逻辑</strong>要做。默认的"逐字段销毁"不够用——比如 <code>Rc</code> 要先<strong>计数 -1</strong>,数到 0 才释放;Box 要把堆内存 dealloc 掉。手写 Drop = 先干自定义活,再走默认销毁。以 Rc 为例:</p>
+
+<pre class="code-block" data-lang="rust"><code>impl&lt;T&gt; Drop for Rc&lt;T&gt; {
+    fn drop(&amp;mut self) {
+        // ① 自定义逻辑:计数器 -1
+        let count = self.strong_count() - 1;
+        self.set_strong_count(count);
+
+        if count == 0 {
+            // ② 最后一个了,销毁里面的数据(调 T 的 Drop)
+            //    比如数据是 String,会递归释放堆字符
+            unsafe { ptr::drop_in_place(self.ptr.as_ref().value) }
+            // ③ 再 dealloc 掉 RcBox 自己占的堆内存
+            dealloc(self.ptr);
+        }
+        // count != 0 时:啥也不干,数据留给其他 Rc 继续用
+    }
+}</code></pre>
+
+<p>看出规律没?<strong>智能指针的 Drop = 自定义逻辑(Rc 数数、Box 释放堆)+ 走默认销毁</strong>。普通 struct 没这些弯弯绕,直接默认递归销毁就完事。</p>
+
+<h3>底层都是 dealloc，没有 GC</h3>
+<p>不管默认 Drop 还是手写 Drop,真正"释放内存"的那一步,底层都是调 <code>std::alloc::dealloc</code>(Rust 版的 C <code>free</code>)——把堆内存地址还回操作系统。<strong>没有 GC 追踪,没有停顿,就是显式释放</strong>,只是这个"显式"被 Drop trait 自动化了,你不用手写 <code>free</code>。</p>
+
+<table-wrap-placeholder></table-wrap-placeholder>
+<div class="table-wrap"><table><thead><tr><th></th><th>默认 Drop（普通 struct）</th><th>手写 Drop（Rc/Box/Vec）</th></tr></thead><tbody>
+<tr><td>谁生成</td><td>编译器自动</td><td>你自己写</td></tr>
+<tr><td>干啥</td><td>逐字段递归销毁</td><td>自定义逻辑(计数/释放堆) + 递归销毁</td></tr>
+<tr><td>底层释放</td><td>堆类型字段自己 dealloc</td><td>手写 dealloc + 递归</td></tr>
+<tr><td>适用</td><td>99% 的 struct</td><td>智能指针/管理资源的类型</td></tr>
+</tbody></table></div>
+
+<p><strong>一句话总结</strong>:Drop 是 Rust 自动清理的实现机制——普通 struct 用默认的"逐字段递归销毁"(你啥也不用写),智能指针手写 Drop 加点自定义逻辑(如 Rc 计数),底层都是 <code>dealloc</code> 把堆内存还给操作系统,全程没有 GC。</p>
 <hr>
 <h2>15.4 <code>Rc&lt;T&gt;</code> —— 引用计数，让一个数据有多个主人</h2>
 <p>有些场景下，你确实需要多个变量共同拥有一份数据。Java 里这是家常便饭（任何对象都可以被多处引用），但 Rust 默认只用所有权模型（一份数据一个主人）。<code>Rc&lt;T&gt;</code> 打破了这个限制：</p>
